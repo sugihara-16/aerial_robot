@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<launch>
+
+  # sipnal
+  <include file="$(find spinal_ros_bridge)/launch/serial.launch" >
+  </include>
+
+  # position control node
+  <node pkg="quadrotor" type="pid_control_with_realsense.py" name="pidControl" output="screen" >
+  </node>
+  # att control node
+    <node pkg="aerial_robot_control" type="multirotor_att_test.py" name="multirotor_att_test" output="screen" >
+    <param name="base_throttle" value="1350"/> <!-- for 5inch type -->
+    <param name="max_angle" value="0.4"/>
+    <param name="min_pwm" value="0.54"/>
+    <param name="max_pwm" value="0.8"/>
+    <param name="motor_num" value="4"/>
+    <param name="p_gain" value="200.0"/> <!-- for 5inch type -->
+    <param name="i_gain" value="20.0"/>  <!-- for 5inch type -->
+    <param name="d_gain" value="20.0"/>  <!-- for 5inch type -->
+    <param name="yaw_p_gain" value="200.0"/>  <!-- for 5inch type -->
+    <param name="yaw_i_gain" value="20.0"/>  <!-- for 5inch type -->
+    <param name="yaw_d_gain" value="50.0"/>  <!-- for 5inch type -->
+  </node>
+
+</launch>

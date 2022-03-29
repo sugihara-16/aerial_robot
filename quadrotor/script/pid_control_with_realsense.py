@@ -17,7 +17,8 @@ class PIDControl():
         rospy.loginfo('activate')
         self.ar_sub = rospy.Subscriber('/camera/odom/sample',Odometry,self.callback)
         self.teleop_sub = rospy.Subscriber('/cmd_vel', Twist, self.TeleopCallback)
-        self.ref = np.array([0.0,0.0,0.10,0],dtype = float) #[ref_x,ref_y,ref_z,ref_yaw]
+        self.joy_sub = rospy.Subscriber('joy', Joy, self.joyCallback)
+        self.ref = np.array([0.0,0.0,0.3,0],dtype = float) #[ref_x,ref_y,ref_z,ref_yaw]
         self.p = np.array([15.0,15.0,400.0,0.2] , dtype = float) #[px,py,pz,pyaw]
         self.i = np.array([1.5,1.5,200.0,0.001], dtype = float) #[ix,iy,iz,iyaw]
         self.d = np.array([4.0,4.0,40.0,0.0], dtype = float) #[dx,dy,dz,dyaw]
@@ -30,6 +31,8 @@ class PIDControl():
         self.motor_num = 4
         self.base_thrust_offset = 1100.0
         self.landing = True
+        self.rise = False
+        self.descend = False
         self.landing_base_thrust = [1100.0]*self.motor_num
         self.flight_cmd_pub = rospy.Publisher('/four_axes/command', FourAxisCommand, queue_size = 1)
         self.motor_cmd_pub = rospy.Publisher('flight_config_cmd', FlightConfigCmd, queue_size = 1)
@@ -49,7 +52,28 @@ class PIDControl():
             rospy.sleep(0.1) 
             self.motor_cmd_pub.publish(FlightConfigCmd(FlightConfigCmd.INTEGRATION_CONTROL_ON_CMD))
         if msg.linear.z == -0.5: #'b'
+            self.motor_cmd_pub.publish(FlightConfigCmd(FlightConfigCmd.ARM_OFF_CMD))
+
+    def joyCallback(self,msg):
+        if msg.buttons[6] == 1: #L2:takeoff
+            rospy.loginfo(msg.buttons)
+            self.landing = False
+            # start arming motor
+            self.motor_cmd_pub.publish(FlightConfigCmd(FlightConfigCmd.ARM_ON_CMD))
+            # send start i control cmd
+            rospy.sleep(0.1) 
+            self.motor_cmd_pub.publish(FlightConfigCmd(FlightConfigCmd.INTEGRATION_CONTROL_ON_CMD))
+        if msg.buttons[7] == 1: #R2:landing
             self.landing = True
+
+        if msg.buttons[4] == 1: #L1:rise
+            
+            self.rise = True
+            rospy.loginfo(msg.buttons)
+
+        if msg.buttons[5] == 1: #R1:descend
+            self.descend = True
+            self.motor_cmd_pub.publish(FlightConfigCmd(FlightConfigCmd.ARM_OFF_CMD))
 
     def main(self):
         r = rospy.Rate(40) # 40hz
@@ -85,7 +109,7 @@ class PIDControl():
             if self.landing:
                 cmd_msg.base_thrust = self.landing_base_thrust
                 # weaken pwm gradually
-                self.landing_base_thrust = [self.landing_base_thrust[0]-2.0]*self.motor_num
+                self.landing_base_thrust = [self.landing_base_thrust[0]-1.0]*self.motor_num
                 # initializing integration
                 self.integral = [0.0,0.0,0.0,0.0]
                 if self.landing_base_thrust[0] <= 1000:
@@ -94,6 +118,8 @@ class PIDControl():
                     self.motor_cmd_pub.publish(FlightConfigCmd(FlightConfigCmd.INTEGRATION_CONTROL_OFF_CMD))
             else:
                 self.landing_base_thrust = target_base_thrust
+            #cmd_msg.angles = [0.0,0.0,0.0]
+            #cmd_msg.base_thrust = [1000.0]*self.motor_num
             self.flight_cmd_pub.publish(cmd_msg)
             #rospy.loginfo("p_term:[%f,%f,%f], i_term: [%f,%f,%f], d_term: [%f,%f,%f]", p_term[0],p_term[1],p_term[2], i_term[0],i_term[1],i_term[2], d_term[0],d_term[1],d_term[2])
             #rospy.loginfo(self.psi_est)

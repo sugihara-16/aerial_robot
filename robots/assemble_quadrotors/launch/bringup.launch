@@ -45,7 +45,10 @@
     ###########  Control  ###########
     <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"  if="$(eval airframe == 'whole')"/>
     <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"  if="$(eval airframe == 'test')"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt.yaml" command="load"  if="$(eval airframe == 'male' or airframe == 'female' or airframe == 'neutral')"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt.yaml" command="load"  if="$(eval airframe == 'neutral')"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_female.yaml" command="load"  if="$(eval airframe == 'female')"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male')"/>
+
     ###########  Sensor Fusion  ###########
     <rosparam file="$(arg config_dir)/StateEstimation.yaml" command="load" />
     <rosparam file="$(arg config_dir)/Simulation.yaml" command="load" if="$(eval arg('simulation') and not arg('real_machine'))"/>

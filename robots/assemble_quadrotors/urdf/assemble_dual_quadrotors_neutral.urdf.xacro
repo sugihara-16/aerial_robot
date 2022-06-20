@@ -172,10 +172,10 @@
   <!-- <xacro:propeller_module id = "3" x = "0.10474" y = "0.10579" z = "0.05404"  pich = "${opt_pich_2}" yaw = "${opt_yaw_2}" direction = "1" /> -->
   <!-- <xacro:propeller_module id = "4" x = "-0.10757" y = "0.12281" z = "0.05404"  pich = "${opt_pich_1}" yaw = "${opt_yaw_1}"  direction = "-1" /> -->
 
-  <xacro:propeller_module id = "1" x = "-0.104" y = "-0.12" z = "0.05404" pich = "${-opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" />
-  <xacro:propeller_module id = "2" x = "0.107" y = "-0.11" z = "0.05404" pich = "${-opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" />
-  <xacro:propeller_module id = "3" x = "0.104" y = "0.11" z = "0.05404"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
-  <xacro:propeller_module id = "4" x = "-0.107" y = "0.12" z = "0.05404"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
+  <xacro:propeller_module id = "1" x = "-0.1044" y = "-0.12014" z = "0.05402" pich = "${-opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" />
+  <xacro:propeller_module id = "2" x = "0.10705" y = "-0.10827" z = "0.05946" pich = "${-opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" />
+  <xacro:propeller_module id = "3" x = "0.10705" y = "0.10827" z = "0.05402"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
+  <xacro:propeller_module id = "4" x = "-0.10705" y = "0.12014" z = "0.05404"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
 
 
 </robot>

@@ -59,8 +59,12 @@ public:
   double max_thrust_;
   double pos_bound_;
   double fc_f_min_weight_, fc_t_min_weight_;
+  bool test_mode_;
+  bool unit_mode_;
+  std::vector<double> test_x_;
 
   ros::Publisher visualize_pub_;
   ros::Publisher feasible_control_info_pub_;
+  ros::Publisher feasible_control_info_sub_;
   ros::Publisher feasible_control_info_pub_unit_;
 };

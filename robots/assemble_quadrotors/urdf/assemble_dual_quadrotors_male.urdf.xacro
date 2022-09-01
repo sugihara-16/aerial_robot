@@ -135,19 +135,12 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <!-- <mass value = "0.79154967" /> -->
-      <mass value = "0.79154967" />
+      <mass value = "0.78550624" />
       <origin xyz="0 0 0" rpy="0 0 0"/>
-    <!--   <inertia -->
-    <!--       ixx="0.00565753" ixy="-0.00012094" ixz="0.00049859" -->
-    <!--       iyy="0.00763738" iyz="0.00003798" -->
-    <!--       izz="0.01152518"/> -->
-    <!-- </inertial> -->
-    <!--TODO modify to the correct inertia -->
     <inertia
-        ixx="0.00523481" ixy="-0.00011631" ixz="-0.00040281"
-        iyy="0.00740303" iyz="-0.00003402"
-        izz="0.01114830"/>
+        ixx="0.005554124" ixy="0.00002714" ixz="-0.00046661"
+        iyy="0.00758289" iyz="-0.00001400"
+        izz="0.011148881"/>
     </inertial>
 
     <visual>

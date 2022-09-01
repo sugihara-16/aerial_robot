@@ -3,7 +3,7 @@ estimation:
         # sensor plugin
         sensor_list:
         - sensor_plugin/imu
-        - sensor_plugin/mocap
+        - sensor_plugin/assemble_mocap
         - sensor_plugin/alt
         - sensor_plugin/gps
 
@@ -45,8 +45,12 @@ estimation:
 sensor_plugin:
         imu:
                 estimate_mode: 3 # 1<<0 + 1<<1
-        mocap:
+        assemble_mocap:
                 estimate_mode: 6 # 1<<1 + 1<<2
+                mocap_sub_name: /temp # abondaned
+                assemble_mocap_sub_name: /assemble/mocap/pose
+                unit_mocap_sub_name: mocap/pose
+                
         alt:
                 estimate_mode: 1 # 1<<0
         gps:

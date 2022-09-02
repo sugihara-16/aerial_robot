@@ -33,6 +33,25 @@ namespace aerial_robot_model {
         ROS_ERROR("can not find plugin rosparameter for robot model, use default class: aerial_robot_model::RobotModel");
         robot_model_ = boost::make_shared<aerial_robot_model::RobotModel>();
       }
+
+    // initialize, workaround for fixed aerial robot
+    sensor_msgs::JointState dummy_joint_state;
+    robot_model_->updateRobotModel(dummy_joint_state);
+    ROS_INFO("initialized robot model, the mass is %f", robot_model_->getMass());
+
+    auto link_joint_names = robot_model_->getLinkJointNames();
+    // alternative for getLinkJointNames():
+    // run KDL::RigidBodyInertia RobotModel::inertialSetup(const KDL::TreeElement& tree_element)
+    
+    if (link_joint_names.size() == 0) {
+      // no link joints = fixed aerial robot
+      // purpose: broadcast static tf between root and CoG
+
+      tf::Transform cog_tf;
+      transformKDLToTF(robot_model_->getCog<KDL::Frame>(), cog_tf);
+
+      // refering: https://github.com/ros/robot_state_publisher/blob/rolling/src/robot_state_publisher.cpp#L130
+    }
  }
 
   void RobotModelRos::jointStateCallback(const sensor_msgs::JointStateConstPtr& state)
@@ -40,8 +59,7 @@ namespace aerial_robot_model {
     joint_state_ = *state;
     robot_model_->updateRobotModel(*state);
 
-    ROS_INFO_ONCE("initialized robot model, the mass is %f", robot_model_->getMass());
-
+    // TODO1: tf for root -> cog in case of fixed aerial robot
     geometry_msgs::TransformStamped tf = robot_model_->getCog<geometry_msgs::TransformStamped>();
     tf.header = state->header;
     tf.header.frame_id = tf::resolve(tf_prefix_, robot_model_->getRootFrameName());

@@ -2,9 +2,9 @@ aerial_robot_control_name: aerial_robot_control/hydrus_tilted_lqi_controller
 
 controller:
   xy:
-    p_gain: 35
+    p_gain: 10
     i_gain: 0.1
-    d_gain: 12.0
+    d_gain: 8.0
     limit_sum: 3
     limit_p: 3
     limit_i: 1.5

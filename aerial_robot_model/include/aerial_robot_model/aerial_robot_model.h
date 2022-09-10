@@ -229,9 +229,9 @@ namespace aerial_robot_model {
 
     //private functions
     void getParamFromRos();
-    void kinematicsInit();
+    void kinematicsInit(std::string robot_description = std::string("robot_description"));
     void stabilityInit();
-    void staticsInit();
+    void staticsInit(std::string robot_description = std::string("robot_description"));
 
 
     KDL::RigidBodyInertia inertialSetup(const KDL::TreeElement& tree_element);

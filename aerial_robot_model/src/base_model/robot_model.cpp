@@ -43,10 +43,10 @@ namespace aerial_robot_model {
     nh.param("epsilon", epsilon_, 10.0);
   }
 
-  void RobotModel::kinematicsInit()
+  void RobotModel::kinematicsInit(std::string robot_description)
   {
     /* robot model */
-    if (!model_.initParam("robot_description"))
+    if (!model_.initParam(robot_description))
       {
         ROS_ERROR("Failed to extract urdf model from rosparam");
         return;
@@ -57,7 +57,7 @@ namespace aerial_robot_model {
         return;
       }
     /* get baselink and thrust_link from robot model */
-    auto robot_model_xml = getRobotModelXml("robot_description");
+    auto robot_model_xml = getRobotModelXml(robot_description);
     TiXmlElement* baselink_attr = robot_model_xml.FirstChildElement("robot")->FirstChildElement("baselink");
     if(!baselink_attr)
       ROS_DEBUG("Can not get baselink attribute from urdf model");
@@ -102,10 +102,10 @@ namespace aerial_robot_model {
     fc_t_dists_.resize(rotor_num_ * (rotor_num_ - 1));
   }
 
-  void RobotModel::staticsInit()
+  void RobotModel::staticsInit(std::string robot_description)
   {
     /* get baselink and thrust_link from robot model */
-    auto robot_model_xml = getRobotModelXml("robot_description");
+    auto robot_model_xml = getRobotModelXml(robot_description);
 
     /* set rotor property */
     TiXmlElement* m_f_rate_attr = robot_model_xml.FirstChildElement("robot")->FirstChildElement("m_f_rate");

@@ -277,6 +277,9 @@ OptimalDesign::OptimalDesign(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp.param("fc_tmin_weight", fc_t_min_weight_, 1.0);
   nhp.param("pos_bound", pos_bound_, 0.25); // [m]
   nhp.param("m_f_rate", m_f_rate_, -0.006); // [Nm/N]
+  nhp.param("test_mode", test_mode_, false);
+  nhp.param("unit_mode", unit_mode_, false);
+  nhp.param("test_x", test_x_, {0.523525,0.73108,0.523535,-2.08113,0.523595,2.4662,0.348489,-0.673131});
 
   units_num_ = 2; // we only consider two units
 
@@ -323,11 +326,13 @@ OptimalDesign::OptimalDesign(ros::NodeHandle nh, ros::NodeHandle nhp)
 
   bool search_flag;
   nhp.param("search_flag", search_flag, true);
-  if (search_flag) {
+  if (test_mode_){
+    opt_x = test_x_;
+  }else if (search_flag) {
       nlopt::result result = optimizer_solver.optimize(opt_x, max_val);
       if (result != nlopt::SUCCESS)
         ROS_WARN_STREAM("the optimize solution does not succeed, result is " << result);
-    }
+  }
 
 
   // get the p, u, v and direction of assembled rotors
@@ -369,23 +374,23 @@ OptimalDesign::OptimalDesign(ros::NodeHandle nh, ros::NodeHandle nhp)
 
   }
 
-  double fx_sum = 0;
-  double fy_sum = 0;
-  double tx_sum = 0;
-  double ty_sum = 0;
-  double tz_sum = 0;
-  for(int i = 0; i< unit_rotor_num_; i++){
-    fx_sum += u_unit[i][0] * max_thrust_ ;
-    fy_sum += u_unit[i][1] * max_thrust_ ;
-    tx_sum += v_unit[i][0] * max_thrust_ ;
-    ty_sum += v_unit[i][1] * max_thrust_ ;
-    tz_sum += v_unit[i][2] * max_thrust_ ;
+  //calclate max force and torque
+  Eigen::Vector3d max_force = Eigen::Vector3d::Zero(3) ;
+  Eigen::Vector3d max_torque = Eigen::Vector3d::Zero(3) ;
+  for(int i = 0; i < unit_rotor_num_; i++){
+    max_force(0) += std::max(0.0,Eigen::Vector3d::UnitX().dot(u_unit.at(i))*max_thrust_)*2;
+    max_force(1) += std::max(0.0,Eigen::Vector3d::UnitY().dot(u_unit.at(i))*max_thrust_)*2;
+    max_force(2) +=  std::max(0.0,Eigen::Vector3d::UnitZ().dot(u_unit.at(i))*max_thrust_)*2;
+    Eigen::Vector3d x_axis_dis(0,p_unit.at(i).y(),p_unit.at(i).z());
+    Eigen::Vector3d zy_force(0,u_unit.at(i).y(),u_unit.at(i).z());
+    Eigen::Vector3d y_axis_dis(p_unit.at(i).x(),0,p_unit.at(i).z());
+    Eigen::Vector3d xz_force(u_unit.at(i).x(),0,u_unit.at(i).z());
+    Eigen::Vector3d z_axis_dis(p_unit.at(i).x(),p_unit.at(i).y(),0);
+    Eigen::Vector3d xy_force(u_unit.at(i).x(),u_unit.at(i).y(),0);
+    max_torque(0) +=std::max(0.0,(x_axis_dis.cross(zy_force)*max_thrust_).dot(Eigen::Vector3d::UnitX()))*2;
+    max_torque(1) +=std::max(0.0,(y_axis_dis.cross(xz_force)*max_thrust_).dot(Eigen::Vector3d::UnitY()))*2;
+    max_torque(2) +=std::max(0.0,(z_axis_dis.cross(xy_force)*max_thrust_).dot(Eigen::Vector3d::UnitZ()))*2;
   }
-  std::cout << "fx_sum : " << fx_sum << std::endl;
-  std::cout << "fy_sum : " << fy_sum << std::endl;
-  std::cout << "tx_sum : " << tx_sum << std::endl;
-  std::cout << "ty_sum : " << ty_sum << std::endl;
-  std::cout << "tz_sum : " << tz_sum << std::endl;
 
   std::cout << "fz : " <<(9.8*unit_mass_  - (cos(opt_x[0]) + cos(opt_x[2]) + cos(opt_x[4]) + cos(opt_x[6]))  * max_thrust_ )<< std::endl;
 
@@ -410,10 +415,15 @@ OptimalDesign::OptimalDesign(ros::NodeHandle nh, ros::NodeHandle nhp)
   ss.str("");
   ss.clear(std::stringstream::goodbit);
 
+  std::cout << max_force << std::endl;
+  std::cout << max_torque << std::endl;
+
   ss << "final fc_f_min: " << fc_f_min << "; fc_t_min: " << fc_t_min;
   std::cout << ss.str() << std::endl;
   ss.str("");
   ss.clear(std::stringstream::goodbit);
+
+
 
     // publish the info of assembled rotors
   aerial_robot_msgs::FeasibleControlConvexInfo msg;
@@ -470,63 +480,150 @@ OptimalDesign::OptimalDesign(ros::NodeHandle nh, ros::NodeHandle nhp)
 
 
   visualization_msgs::MarkerArray marker_msg;
-  for (int j = 0; j < unit_rotor_num_ * 2; j++) {
+  if(unit_mode_){
+    for (int j = 0; j < unit_rotor_num_ ; j++) {
+      visualization_msgs::Marker marker;
+      marker.header.stamp = ros::Time::now();
+      marker.header.frame_id = std::string("world");
+      marker.ns = std::string("drone");
+      marker.id = j*3;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.type = visualization_msgs::Marker::ARROW;
+      geometry_msgs::Point point;
+      point.x = 0;
+      point.y = 0;
+      point.z = 0;
+      marker.points.push_back(point);
+      point.x = p_unit.at(j).x();
+      point.y = p_unit.at(j).y();
+      point.z = p_unit.at(j).z();
+      marker.points.push_back(point);
+      marker.scale.x = 0.01;
+      marker.scale.y = 0.01;
+      marker.pose.orientation.w = 1.0;
+      marker.color.r = 1.0;
+      marker.color.a = 1.0;
+      marker_msg.markers.push_back(marker);
+
+      marker.id = 3 * j + 1;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.pose.position.x = p_unit.at(j).x();
+      marker.pose.position.y = p_unit.at(j).y();
+      marker.pose.position.z = p_unit.at(j).z();
+      double yaw = atan2(u_unit.at(j).y(), u_unit.at(j).x());
+      Eigen::Vector3d u_original_pos = Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()) * u_unit.at(j); // inverse rotation of u
+      double pitch_sign = u_original_pos.x() / fabs(u_original_pos.x());
+      double pitch = atan2(sqrt(u_original_pos.x() * u_original_pos.x() + u_original_pos.y() * u_original_pos.y()), u_original_pos.z());
+      marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, pitch, yaw);
+      marker.scale.x = pos_bound_/2;
+      marker.scale.y = pos_bound_/2;
+      marker.scale.z = 0.02;
+      marker.color.b = 1.0;
+      marker.color.r = 0.0;
+      marker.color.a = 1.0;
+      marker_msg.markers.push_back(marker);
+
+      marker.id = 3 * j + 2;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.pose.position.x = p_unit.at(j).x() + u_unit.at(j).x() * 0.01;
+      marker.pose.position.y = p_unit.at(j).y() + u_unit.at(j).y() * 0.01;
+      marker.pose.position.z = p_unit.at(j).z() + u_unit.at(j).z() * 0.01;
+      pitch = atan2(sqrt(u_unit.at(j).x() * u_unit.at(j).x() + u_unit.at(j).y() * u_unit.at(j).y()), u_unit.at(j).z());
+      yaw = atan2(u_unit.at(j).y(), u_unit.at(j).x());
+      marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, pitch, yaw);
+      marker.scale.x = pos_bound_/10;
+      marker.scale.y = pos_bound_/10;
+      marker.scale.z = 0.01;
+      marker.color.b = 1.0;
+      marker.color.r = 0.0;
+      marker.color.a = 1.0;
+      marker_msg.markers.push_back(marker);
+
+    }
+  }else{
+    for (int j = 0; j < unit_rotor_num_ * 2; j++) {
+      visualization_msgs::Marker marker;
+      marker.header.stamp = ros::Time::now();
+      marker.header.frame_id = std::string("world");
+      marker.ns = std::string("drone");
+      marker.id = 3 * j;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.type = visualization_msgs::Marker::ARROW;
+      geometry_msgs::Point point;
+      point.x = -pos_bound_*(j%2-0.5)/abs(j%2-0.5); // define the different center by unit
+      point.y = 0;
+      point.z = 0;
+      marker.points.push_back(point);
+      point.x = p.at(j).x();
+      point.y = p.at(j).y();
+      point.z = p.at(j).z();
+      marker.points.push_back(point);
+      marker.scale.x = 0.01;
+      marker.scale.y = 0.01;
+      marker.pose.orientation.w = 1.0;
+      marker.color.r = 1.0;
+      marker.color.a = 1.0;
+      marker_msg.markers.push_back(marker);
+
+      marker.id = 3 * j + 1;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.pose.position.x = p.at(j).x();
+      marker.pose.position.y = p.at(j).y();
+      marker.pose.position.z = p.at(j).z();
+      double yaw = atan2(u.at(j).y(), u.at(j).x());
+      Eigen::Vector3d u_original_pos = Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()) * u.at(j); // inverse rotation of u
+      double pitch_sign = u_original_pos.x() / fabs(u_original_pos.x());
+      double pitch = atan2(sqrt(u_original_pos.x() * u_original_pos.x() + u_original_pos.y() * u_original_pos.y()), u_original_pos.z());
+      marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, pitch, yaw);
+      marker.scale.x = pos_bound_/2;
+      marker.scale.y = pos_bound_/2;
+      marker.scale.z = 0.02;
+      marker.color.b = 1.0;
+      marker.color.r = 0.0;
+      marker.color.a = 1.0;
+      marker_msg.markers.push_back(marker);
+
+      marker.id = 3 * j + 2;
+      marker.action = visualization_msgs::Marker::ADD;
+      marker.type = visualization_msgs::Marker::CYLINDER;
+      marker.pose.position.x = p.at(j).x() + u.at(j).x() * 0.01;
+      marker.pose.position.y = p.at(j).y() + u.at(j).y() * 0.01;
+      marker.pose.position.z = p.at(j).z() + u.at(j).z() * 0.01;
+      pitch = atan2(sqrt(u.at(j).x() * u.at(j).x() + u.at(j).y() * u.at(j).y()), u.at(j).z());
+      yaw = atan2(u.at(j).y(), u.at(j).x());
+      marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, pitch, yaw);
+      marker.scale.x = pos_bound_/10;
+      marker.scale.y = pos_bound_/10;
+      marker.scale.z = 0.01;
+      marker.color.b = 1.0;
+      marker.color.r = 0.0;
+      marker.color.a = 1.0;
+      marker_msg.markers.push_back(marker);
+
+    }
     visualization_msgs::Marker marker;
     marker.header.stamp = ros::Time::now();
     marker.header.frame_id = std::string("world");
     marker.ns = std::string("drone");
-    marker.id = 3 * j;
+    marker.id = marker.id+(unit_rotor_num_*2-1)*3+3;
     marker.action = visualization_msgs::Marker::ADD;
     marker.type = visualization_msgs::Marker::ARROW;
     geometry_msgs::Point point;
-    point.x = 0;
+    point.x = -pos_bound_; // define the different center by unit
     point.y = 0;
     point.z = 0;
     marker.points.push_back(point);
-    point.x = p.at(j).x();
-    point.y = p.at(j).y();
-    point.z = p.at(j).z();
+    point.x = pos_bound_;
+    point.y = 0;
+    point.z = 0;
     marker.points.push_back(point);
     marker.scale.x = 0.01;
     marker.scale.y = 0.01;
     marker.pose.orientation.w = 1.0;
     marker.color.r = 1.0;
-    marker.color.a = 1.0;
-    marker_msg.markers.push_back(marker);
-
-    marker.id = 3 * j + 1;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.type = visualization_msgs::Marker::CYLINDER;
-    marker.pose.position.x = p.at(j).x();
-    marker.pose.position.y = p.at(j).y();
-    marker.pose.position.z = p.at(j).z();
-    double yaw = atan2(u.at(j).y(), u.at(j).x());
-    Eigen::Vector3d u_original_pos = Eigen::AngleAxisd(-yaw, Eigen::Vector3d::UnitZ()) * u.at(j); // inverse rotation of u
-    double pitch_sign = u_original_pos.x() / fabs(u_original_pos.x());
-    double pitch = atan2(sqrt(u_original_pos.x() * u_original_pos.x() + u_original_pos.y() * u_original_pos.y()), u_original_pos.z());
-    marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, pitch, yaw);
-    marker.scale.x = pos_bound_/2;
-    marker.scale.y = pos_bound_/2;
-    marker.scale.z = 0.02;
-    marker.color.b = 1.0;
-    marker.color.r = 0.0;
-    marker.color.a = 1.0;
-    marker_msg.markers.push_back(marker);
-
-    marker.id = 3 * j + 2;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.type = visualization_msgs::Marker::CYLINDER;
-    marker.pose.position.x = p.at(j).x() + u.at(j).x() * 0.01;
-    marker.pose.position.y = p.at(j).y() + u.at(j).y() * 0.01;
-    marker.pose.position.z = p.at(j).z() + u.at(j).z() * 0.01;
-    pitch = atan2(sqrt(u.at(j).x() * u.at(j).x() + u.at(j).y() * u.at(j).y()), u.at(j).z());
-    yaw = atan2(u.at(j).y(), u.at(j).x());
-    marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, pitch, yaw);
-    marker.scale.x = pos_bound_/10;
-    marker.scale.y = pos_bound_/10;
-    marker.scale.z = 0.01;
-    marker.color.b = 1.0;
-    marker.color.r = 0.0;
     marker.color.a = 1.0;
     marker_msg.markers.push_back(marker);
 

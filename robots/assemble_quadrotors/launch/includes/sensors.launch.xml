@@ -27,6 +27,9 @@
     <rosparam file="$(find aerial_robot_base)/config/sensors/mocap.yaml" command="load" />
     <rosparam file="$(find aerial_robot_base)/config/sensors/altmeter/leddar_one.yaml" command="load" />
 
+    <!-- mocap_sub name parameters for airframe switching -->
+    <param name = "assemble_mocap_sub_name" value = "assemble/mocap/pos" />
+    <param name = "unit_mocap_sub_name" value = "$(arg robot_ns)/mocap/pose" />
   </group>
 
 </launch>

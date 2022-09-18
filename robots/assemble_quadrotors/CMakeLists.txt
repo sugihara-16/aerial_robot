@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   aerial_robot_msgs
   aerial_robot_control
   aerial_robot_model
+  hydrus
+  aerial_robot_estimation
   )
 
 find_package(NLopt REQUIRED)
@@ -24,6 +26,7 @@ include_directories(
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 catkin_package(
+  INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp aerial_robot_control aerial_robot_model aerial_robot_msgs
   DEPENDS EIGEN3
 )
@@ -33,3 +36,12 @@ catkin_package(
 ###########
 add_executable(optimal_design_node src/optimal_design.cpp)
 target_link_libraries(optimal_design_node ${catkin_LIBRARIES} ${NLOPT_LIBRARIES})
+
+add_library(assemble_mocap_pluginlib src/sensor/mocap.cpp)
+target_link_libraries(assemble_mocap_pluginlib ${catkin_LIBRARIES})
+add_dependencies(assemble_mocap_pluginlib aerial_robot_msgs_generate_messages_cpp spinal_generate_messages_cpp)
+
+add_library(assemble_robot_model src/model/assemble_robot_model.cpp)
+target_link_libraries(assemble_robot_model ${catkin_LIBRARIES})
+
+

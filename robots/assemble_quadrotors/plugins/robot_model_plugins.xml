@@ -1,0 +1,5 @@
+<library path="lib/libassemble_robot_model">
+  <class name="assemble_robot_model" type="AssembleTiltedRobotModel" base_class_type="aerial_robot_model::RobotModel">
+    <description>plugin for assemble robot model </description>
+  </class>
+</library>

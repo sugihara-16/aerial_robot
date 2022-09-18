@@ -14,7 +14,7 @@
   <arg name="spawn_y" default="0.0"/>
   <arg name="spawn_z" default="0.0"/>
   <arg name="spawn_yaw" default="0.0"/>
-  <arg name="robot_id" default="" /> # please allocate id=1 to male and id = 2 to female
+  <arg name="robot_id" default="1" /> # please allocate id=1 to male and id = 2 to female
   <arg name="airframe" default="whole" />
   <arg name="fully_actuated" default="true" />
   <arg name="female" default="false" />
@@ -69,7 +69,7 @@
   <arg name="description_mode" value="gazebo" if="$(arg simulation)" />
   <include file="$(find assemble_quadrotors)/launch/includes/assemble_robot_model.launch" >
     <arg name="headless" value="$(arg headless)" />
-    
+
     <!-- models for test flight -->
     <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole.$(arg description_mode).xacro" if="$(eval airframe == 'whole')"/>
     <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>

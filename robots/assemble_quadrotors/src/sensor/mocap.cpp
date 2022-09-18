@@ -38,51 +38,52 @@
 using namespace Eigen;
 using namespace std;
 
+namespace sensor_plugin{
+  // override
+  void AssembleMocap::initialize(ros::NodeHandle nh,
+                                 boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
+                                 boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
+                                 string sensor_name, int index)
+  {
+    Mocap::initialize(nh, robot_model, estimator, sensor_name, index);
 
-// override
-void AssembleMocap::initialize(ros::NodeHandle nh,
-                                boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
-                                boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
-                                string sensor_name, int index)
-{
-  Mocap::initialize(nh, robot_model, estimator, sensor_name, index);
+    std::string assemble_topic_name; // topic: /assemble/mocap/pose
+    getParam<std::string>("assemble_mocap_sub_name", assemble_topic_name, std::string("mocap/pose"));
+    assemble_mocap_sub_ = nh_.subscribe(assemble_topic_name, 1, &AssembleMocap::assemblePoseCallback, this);
 
-  std::string assemble_topic_name; // topic: /assemble/mocap/pose
-  getParam<std::string>("assemble_mocap_sub_name", assemble_topic_name, std::string("pose"));
-  assemble_mocap_sub_ = nh_.subscribe(assemble_topic_name, 1, &Mocap::assemblePoseCallback, this);
+    std::string unit_topic_name; // topic: /assemble_quadrotors${id}/mocap/pose
+    getParam<std::string>("unit_mocap_sub_name", unit_topic_name, std::string("mocap/pose"));
+    unit_mocap_sub_ = nh_.subscribe(unit_topic_name, 1, &AssembleMocap::unitPoseCallback, this);
 
-  std::string unit_topic_name; // topic: /assemble_quadrotors${id}/mocap/pose
-  getParam<std::string>("unit_mocap_sub_name", unit_topic_name, std::string("pose"));
-  unit_mocap_sub_ = nh_.subscribe(unit_topic_name, 1, &Mocap::unitPoseCallback, this);
-
-  assemble_robot_model_ = boost::dynamic_pointer_cast<aerial_robot_model::AssembleRoboModel>(robot_model_);
-}
+    assemble_robot_model_ = boost::dynamic_pointer_cast<AssembleTiltedRobotModel>(robot_model);
+  }
 
 
-void assemblePoseCallback(const geometry_msgs::PoseStampedConstPtr & msg)
-{
-  bool assemble_flag = assemble_robot_model_->isAssemble();
+  void AssembleMocap::assemblePoseCallback(const geometry_msgs::PoseStampedConstPtr & msg)
+  {
+    bool assemble_flag = assemble_robot_model_->isAssemble();
 
-  if (!assemble_flag) return;
+    if (!assemble_flag) return;
 
-  Mocap::poseCallback(msg);
-}
+    Mocap::poseCallback(msg);
+  }
 
-void unitPoseCallback(const geometry_msgs::PoseStampedConstPtr & msg)
-{
-  bool dessemble_flag = assemble_robot_model_->isDessemble();
+  void AssembleMocap::unitPoseCallback(const geometry_msgs::PoseStampedConstPtr & msg)
+  {
+    bool dessemble_flag = assemble_robot_model_->isDessemble();
 
-  if (assmeble_flag_) return;
+    if (!dessemble_flag) return;
 
-  Mocap::poseCallback(msg);
-}
+    Mocap::poseCallback(msg);
+  }
+};
 
 
 
 
 /* plugin registration */
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(sensor_plugin::Mocap, sensor_plugin::SensorBase);
+PLUGINLIB_EXPORT_CLASS(sensor_plugin::AssembleMocap, sensor_plugin::SensorBase);
 
 
 

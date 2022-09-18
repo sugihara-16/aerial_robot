@@ -35,6 +35,7 @@
 
 #pragma once
 
+#include <pluginlib/class_loader.h>
 #include <hydrus/hydrus_tilted_robot_model.h>
 
 class AssembleTiltedRobotModel : public HydrusTiltedRobotModel {
@@ -49,9 +50,9 @@ public:
   bool isDessemble() { return dessemble_mode_;}
 
   void assemble();
-  void deessemble();
+  void dessemble();
 
 private:
   bool assemble_mode_;
-  bool dessemble_model_;
+  bool dessemble_mode_;
 };

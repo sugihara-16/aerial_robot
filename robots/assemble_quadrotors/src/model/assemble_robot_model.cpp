@@ -21,8 +21,8 @@ void AssembleTiltedRobotModel::assemble()
   dessemble_mode_ = false;
 
   // switch urdf mode
-    kinematicsInit("assemble_robot_model");
-    staticsInit("assemble_robot_model");
+    kinematicsInit("assemble_robot");
+    staticsInit("assemble_robot");
 
     aerial_robot_model::RobotModel::updateRobotModel(); // update robot model instantly
 }
@@ -33,8 +33,11 @@ void AssembleTiltedRobotModel::dessemble()
   dessemble_mode_ = true;
 
   // switch urdf mode
-    kinematicsInit("dessemble_model");
-    staticsInit("dessemble_robot_model");
+    kinematicsInit("dessemble_robot");
+    staticsInit("dessemble_robot");
 
     HydrusTiltedRobotModel::updateRobotModel(); // update robot model instantly
 }
+/* plugin registration */
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(AssembleTiltedRobotModel, aerial_robot_model::RobotModel);

@@ -86,12 +86,13 @@ namespace sensor_plugin
       /* ros msg */
       aerial_robot_msgs::States ground_truth_pose_;
 
-      void poseCallback(const geometry_msgs::PoseStampedConstPtr & msg);
       void setGroundTruthPosVel(tf::Vector3 baselink_pos, tf::Vector3 baselink_vel);
       void groundTruthCallback(const nav_msgs::OdometryConstPtr & msg);
       void rosParamInit();
       void init(tf::Vector3 init_pos);
       void estimateProcess(ros::Time stamp);
+    protected:
+      void poseCallback(const geometry_msgs::PoseStampedConstPtr & msg);
     };
 };
 

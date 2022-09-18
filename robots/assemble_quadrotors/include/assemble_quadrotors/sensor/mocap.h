@@ -36,26 +36,28 @@
 #include <aerial_robot_estimation/sensor/mocap.h>
 #include <assemble_quadrotors/model/assemble_robot_model.h>
 
-using namespace sensor_plugin;
+namespace sensor_plugin{
+  class AssembleMocap : public sensor_plugin::Mocap
+  {
+  public:
+    virtual void initialize(ros::NodeHandle nh,
+                            boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
+                            boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
+                            string sensor_name, int index) override;
+    AssembleMocap(){}
+    ~AssembleMocap(){}
 
-class AssembleMocap : public sensor_plugin::SensorBase
-{
-public:
-  virtual void initialize(ros::NodeHandle nh,
-                          boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
-                          boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
-                          string sensor_name, int index) override;
-  AssembleMocap(){}
-  ~AssembleMocap(){}
+  protected:
+    boost::shared_ptr<AssembleTiltedRobotModel> assemble_robot_model_;
+    void assemblePoseCallback(const geometry_msgs::PoseStampedConstPtr & msg);
+    void unitPoseCallback(const geometry_msgs::PoseStampedConstPtr & msg);
 
-  void assemblePoseCallback(const geometry_msgs::PoseStampedConstPtr & msg);
-  void unitPoseCallback(const geometry_msgs::PoseStampedConstPtr & msg);
+  private:
 
-private:
+    /*Subcrivers for assembly robots*/
+    ros::Subscriber assemble_mocap_sub_;
+    ros::Subscriber unit_mocap_sub_;
 
-  /*Subcrivers for assembly robots*/
-  ros::Subscriber assemble_mocap_sub_;
-  ros::Subscriber unit_mocap_sub_;
 
-  boost::shared_ptr<aerial_robot_model::AssembleRoboModel> assemble_robot_model_;
+  };
 };

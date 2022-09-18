@@ -229,10 +229,6 @@ namespace aerial_robot_model {
 
     //private functions
     void getParamFromRos();
-    void kinematicsInit(std::string robot_description = std::string("robot_description"));
-    void stabilityInit();
-    void staticsInit(std::string robot_description = std::string("robot_description"));
-
 
     KDL::RigidBodyInertia inertialSetup(const KDL::TreeElement& tree_element);
     void jointSegmentSetupRecursive(const KDL::TreeElement& tree_element, std::vector<std::string> current_joints);
@@ -242,6 +238,11 @@ namespace aerial_robot_model {
     std::map<std::string, KDL::Frame> fullForwardKinematicsImpl(const KDL::JntArray& joint_positions);
 
   protected:
+
+    void kinematicsInit(std::string robot_description = std::string("robot_description"));
+    void stabilityInit();
+    void staticsInit(std::string robot_description = std::string("robot_description"));
+
     virtual void updateRobotModelImpl(const KDL::JntArray& joint_positions);
 
     void setCog(const KDL::Frame cog)

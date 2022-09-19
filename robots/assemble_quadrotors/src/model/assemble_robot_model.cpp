@@ -8,9 +8,9 @@ AssembleTiltedRobotModel::AssembleTiltedRobotModel(bool init_with_rosparam,
   assemble_mode_(false),
   dessemble_mode_(true)
 {
-  kinematicsInit();
-  staticsInit();
-  stabilityInit();
+  // kinematicsInit();
+  // staticsInit();
+  // stabilityInit();
 }
 
 

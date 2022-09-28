@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+  <arg name="headless" default="false" />
+  <arg name="need_joint_state" default="true"/>
+  <arg name="model_options" default=""/>
+  <arg name="assemble_robot_model" />
+  <arg name="dessemble_robot_model" />
+  <arg name="robot_ns" default="drone"/>
+  <arg name="rviz_init_pose" />
+  <arg name="rviz_config" />
+  <arg name="description_mode" value="urdf"/>
+  <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro"/>
+
+  <node pkg="aerial_robot_model" type="kdl_test" name="kdl_test" ns="$(arg robot_ns)" output="screen">
+  </node>
+
+  <param name="robot_description" command="$(find xacro)/xacro.py '$(arg robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
+
+
+</launch>

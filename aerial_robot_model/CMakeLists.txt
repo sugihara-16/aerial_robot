@@ -104,6 +104,9 @@ target_link_libraries(rotor_tf_publisher ${catkin_LIBRARIES} ${orocos_kdl_LIBRAR
 add_executable(interactive_marker_tf_broadcaster src/utils/interactive_marker_tf_broadcaster.cpp)
 target_link_libraries(interactive_marker_tf_broadcaster ${catkin_LIBRARIES})
 
+add_executable(kdl_test src/kdl_test/kdl_test.cpp)
+target_link_libraries(kdl_test ${catkin_LIBRARIES})
+
 ## for rostest
 add_library(numerical_jacobians test/aerial_robot_model/numerical_jacobians.cpp)
 target_link_libraries(numerical_jacobians aerial_robot_model ${catkin_LIBRARIES})

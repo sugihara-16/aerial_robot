@@ -44,4 +44,7 @@ add_dependencies(assemble_mocap_pluginlib aerial_robot_msgs_generate_messages_cp
 add_library(assemble_robot_model src/model/assemble_robot_model.cpp)
 target_link_libraries(assemble_robot_model ${catkin_LIBRARIES})
 
+add_library(assemble_flight_navigation src/navigation/assemble_flight_navigation.cpp)
+target_link_libraries(assemble_flight_navigation ${catkin_LIBRARIES})
+
 

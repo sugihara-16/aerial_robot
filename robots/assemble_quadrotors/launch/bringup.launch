@@ -20,6 +20,8 @@
   <arg name="female" default="false" />
   <arg name="robot_ns" value="assemble_quadrotors$(arg robot_id)" />
   <arg name="config_dir" default="$(find assemble_quadrotors)/config/" />
+  <arg name="initial_assemble" default="false" />
+
 
   ###########  Parameters  ###########
   <group ns="$(arg robot_ns)">
@@ -33,9 +35,7 @@
 
     # Drone = 0
     <param name="uav_model" value= "0" />
-    <rosparam file="$(arg config_dir)/RobotModelFullyActuated.yaml" command="load"  if="$(arg fully_actuated)"/>
-    <!-- <rosparam file="$(arg config_dir)/RobotModelUnderActuated.yaml" command="load"  unless="$(arg fully_actuated)"/> -->
-    <rosparam file="$(arg config_dir)/AssembleRobotModel.yaml" command="load"  unless="$(arg fully_actuated)"/>
+    <rosparam file="$(arg config_dir)/AssembleRobotModel.yaml" command="load"/>
 
     ###########  Motor Config  ###########
     <rosparam file="$(arg config_dir)/MotorInfo_5inch.yaml" command="load" />
@@ -56,6 +56,7 @@
 
     ###########  Navigation  ###########
     <rosparam file="$(arg config_dir)/NavigationConfig.yaml" command="load" />
+    <param name="flight_navigation_plugin_name" value="aerial_robot_navigation/assemble_flight_navigation" />
   </group>
 
   ###########  Base Platform  ###########
@@ -80,7 +81,7 @@
 
     <!-- assemble and dessemble model for switching function -->
     <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole.$(arg description_mode).xacro"/>
-    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_neutral.$(arg description_mode).xacro" if="$(eval airframe == 'whole' or airframe == 'neutral')"/>
+    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'whole' or airframe == 'neutral')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
 
@@ -89,6 +90,7 @@
     <arg name="rviz_config" value="$(find assemble_quadrotors)/config/rviz_config_$(arg robot_id)" />
     <arg name="rviz_init_pose" value="$(arg config_dir)/RvizInit.yaml" />
     <arg name="need_joint_state" value="false" if ="$(eval arg('simulation') or arg('real_machine'))"/>
+    <arg name="initial_assemble" value="$(arg initial_assemble)"/>
   </include>
 
   ###########  Sensors ###########

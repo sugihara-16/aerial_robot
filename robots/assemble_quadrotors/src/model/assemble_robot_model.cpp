@@ -7,7 +7,7 @@ AssembleTiltedRobotModel::AssembleTiltedRobotModel(bool init_with_rosparam,
   HydrusTiltedRobotModel(init_with_rosparam, verbose, fc_t_min_thre, epsilon),
   assemble_mode_(false),
   dessemble_mode_(true),
-  initial_assemble_("dessemble")
+  initial_assemble_(false)
 {
   // initialize frame mode
   getParamFromRos();

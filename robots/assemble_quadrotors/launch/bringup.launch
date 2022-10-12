@@ -44,11 +44,12 @@
     <rosparam file="$(arg config_dir)/Battery.yaml" command="load" />
 
     ###########  Control  ###########
-    <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"  if="$(eval airframe == 'whole')"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"  if="$(eval airframe == 'test')"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt.yaml" command="load"  if="$(eval airframe == 'neutral')"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_female.yaml" command="load"  if="$(eval airframe == 'female')"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male')"/>
+    # TODO: modification to switch controller
+    <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"  if="$(eval initial_assemble)"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"  if="$(eval airframe == 'test' and initial_assemble !=true )"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt.yaml" command="load"  if="$(eval airframe == 'neutral' and initial_assemble !=true )"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_female.yaml" command="load"  if="$(eval airframe == 'female' and initial_assemble !=true )"/>
+    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male' and initial_assemble !=true )"/>
 
     ###########  Sensor Fusion  ###########
     <rosparam file="$(arg config_dir)/StateEstimation.yaml" command="load" />
@@ -72,16 +73,9 @@
   <include file="$(find assemble_quadrotors)/launch/includes/assemble_robot_model.launch" >
     <arg name="headless" value="$(arg headless)" />
 
-    <!-- models for test flight -->
-    <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole.$(arg description_mode).xacro" if="$(eval airframe == 'whole')"/>
-    <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
-    <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
-    <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotor_test.$(arg description_mode).xacro" if="$(eval airframe == 'test')"/>
-    <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_neutral.$(arg description_mode).xacro" if="$(eval airframe == 'neutral')"/>
-
     <!-- assemble and dessemble model for switching function -->
     <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole.$(arg description_mode).xacro"/>
-    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'whole' or airframe == 'neutral')"/>
+    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_neutral.$(arg description_mode).xacro" if="$(eval airframe == 'neutral')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
 

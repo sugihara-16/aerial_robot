@@ -1,0 +1,5 @@
+<library path="lib/libassemble_flight_navigation">
+  <class name="aerial_robot_navigation/assemble_flight_navigation" type="aerial_robot_navigation::AssembleNavigator" base_class_type="aerial_robot_navigation::BaseNavigator">
+    <description>plugin for assemble navigation </description>
+  </class>
+</library>

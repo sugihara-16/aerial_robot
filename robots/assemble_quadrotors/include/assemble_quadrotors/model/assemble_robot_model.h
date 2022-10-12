@@ -53,6 +53,12 @@ public:
   void dessemble();
 
 private:
+
   bool assemble_mode_;
   bool dessemble_mode_;
+  bool initial_assemble_;
+
+  // private functions
+  void getParamFromRos();
+  void initializeRotorNum(){ rotor_num_=0; }
 };

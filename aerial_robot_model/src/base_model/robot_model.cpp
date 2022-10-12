@@ -332,11 +332,9 @@ namespace aerial_robot_model {
   void RobotModel::updateRobotModelImpl(const KDL::JntArray& joint_positions)
   {
     joint_positions_ = joint_positions;
-
     KDL::RigidBodyInertia link_inertia = KDL::RigidBodyInertia::Zero();
     const auto seg_tf_map = fullForwardKinematics(joint_positions);
     setSegmentsTf(seg_tf_map);
-
     for(const auto& inertia : inertia_map_)
       {
         KDL::Frame f = seg_tf_map.at(inertia.first);
@@ -351,7 +349,6 @@ namespace aerial_robot_model {
               }
           }
       }
-
     /* CoG */
     KDL::Frame f_baselink = seg_tf_map.at(baselink_);
     KDL::Frame cog;
@@ -359,10 +356,8 @@ namespace aerial_robot_model {
     cog.p = link_inertia.getCOG();
     setCog(cog);
     mass_ = link_inertia.getMass();
-
     setInertia((cog.Inverse() * link_inertia).getRotationalInertia());
     setCog2Baselink(cog.Inverse() * f_baselink);
-
     /* thrust point based on COG */
     std::vector<KDL::Vector> rotors_origin_from_cog, rotors_normal_from_cog;
     for(int i = 0; i < rotor_num_; ++i)
@@ -375,12 +370,10 @@ namespace aerial_robot_model {
       }
     setRotorsNormalFromCog(rotors_normal_from_cog);
     setRotorsOriginFromCog(rotors_origin_from_cog);
-
     /* statics */
     calcStaticThrust();
     calcFeasibleControlFDists();
     calcFeasibleControlTDists();
-
     if (!initialized_) initialized_ = true;
   }
 

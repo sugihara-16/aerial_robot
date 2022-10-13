@@ -1,0 +1,5 @@
+<library path="lib/libassemble_controller">
+  <class name="aerial_robot_control/assemble_controller" type="aerial_robot_control::AssembleController" base_class_type="aerial_robot_control::ControlBase">
+    <description>plugin for assemble control </description>
+  </class>
+</library>

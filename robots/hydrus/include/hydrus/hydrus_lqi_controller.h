@@ -49,7 +49,7 @@
 
 namespace aerial_robot_control
 {
-  class HydrusLQIController: public PoseLinearController
+  class HydrusLQIController: public virtual PoseLinearController
   {
 
   public:

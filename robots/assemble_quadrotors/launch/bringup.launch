@@ -45,11 +45,13 @@
 
     ###########  Control  ###########
     # TODO: modification to switch controller
-    <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"  if="$(eval initial_assemble)"/>
+    <!-- <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"  if="$(eval initial_assemble)"/> -->
+    <rosparam file="$(arg config_dir)/AssembleControl.yaml" command="load"  if="$(eval initial_assemble)"/>
     <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"  if="$(eval airframe == 'test' and initial_assemble !=true )"/>
     <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt.yaml" command="load"  if="$(eval airframe == 'neutral' and initial_assemble !=true )"/>
     <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_female.yaml" command="load"  if="$(eval airframe == 'female' and initial_assemble !=true )"/>
     <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male' and initial_assemble !=true )"/>
+
 
     ###########  Sensor Fusion  ###########
     <rosparam file="$(arg config_dir)/StateEstimation.yaml" command="load" />
@@ -65,6 +67,7 @@
     <param name="tf_prefix" value="$(arg robot_ns)"/>
     <param name="param_verbose" value="false"/>
     <param name="main_rate" value="40"/>
+    <param name="airframe" value="$(arg airframe)"/>
   </node>
 
   ###########  Robot Model  ###########

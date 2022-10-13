@@ -1,6 +1,7 @@
 ### Fully actuated PID control for hydrus_xi hex branch type
 aerial_robot_control_name: aerial_robot_control/fully_actuated_controller
 
+
 controller:
   torque_allocation_matrix_inv_pub_interval: 0.05
   wrench_allocation_matrix_pub_interval: 0.1

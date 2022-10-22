@@ -56,7 +56,6 @@ namespace aerial_robot_control
     PoseLinearController::initialize(nh, nhp, robot_model, estimator, navigator, ctrl_loop_rate);
 
     rosParamInit();
-
     q_mat_.resize(6, motor_num_);
     q_mat_inv_.resize(motor_num_, 6);
     target_base_thrust_.resize(motor_num_);

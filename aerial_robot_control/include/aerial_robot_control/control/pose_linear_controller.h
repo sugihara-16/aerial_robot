@@ -66,6 +66,7 @@ namespace aerial_robot_control
 
     virtual bool update() override;
     virtual void reset() override;
+    virtual void sendCmd();
 
   protected:
     ros::Publisher pid_pub_;
@@ -89,8 +90,6 @@ namespace aerial_robot_control
     tf::Vector3 omega_, target_omega_;
 
     virtual void controlCore();
-    virtual void sendCmd();
-
 
     void cfgPidCallback(aerial_robot_control::PidControlConfig &config, uint32_t level, std::vector<int> controller_indices);
   };

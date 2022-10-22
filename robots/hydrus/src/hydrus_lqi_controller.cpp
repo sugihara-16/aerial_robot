@@ -220,6 +220,7 @@ bool HydrusLQIController::optimalGain()
   // Sec. 3.2
 
   Eigen::MatrixXd P = robot_model_->calcWrenchMatrixOnCoG();
+  // ROS_ERROR_STREAM("P: " << P);
   Eigen::MatrixXd P_dash = Eigen::MatrixXd::Zero(lqi_mode_, motor_num_);
   Eigen::MatrixXd inertia = robot_model_->getInertia<Eigen::Matrix3d>();
   P_dash.row(0) = P.row(2) / robot_model_->getMass(); // z

@@ -3,89 +3,109 @@
 using namespace aerial_robot_control;
 
 void AssembleController::initialize(ros::NodeHandle nh,
-                                           ros::NodeHandle nhp,
-                                           boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
-                                           boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
-                                           boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
-                                           double ctrl_loop_rate)
+                                    ros::NodeHandle nhp,
+                                    boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
+                                    boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
+                                    boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
+                                    double ctrl_loop_rate)
 {
   assemble_robot_model_ = boost::dynamic_pointer_cast<AssembleTiltedRobotModel>(robot_model);
 
-  airframe_ = nh.getParam("airframe", airframe_);
+  nh.param("airframe", airframe_, std::string("male"));
+  nh.param("initial_assemble", current_assemble_, false);
+  //initialize paramaters
+  assemble_nh_ = ros::NodeHandle(nh_, "assemble");
+  dessemble_nh_ = ros::NodeHandle(nh_, airframe_);
 
-  //initialize controller according to robot state
-  if(assemble_robot_model_->isAssemble()){
-    current_assemble_ = true;
-    //adjust NodeHandle according to robot state
-    ros::NodeHandle temp_nh(nh, "assemble");
-    nh = temp_nh;
-    FullyActuatedController::initialize(nh, nhp, robot_model, estimator, navigator, ctrl_loop_rate);
-    ROS_INFO("assemble controller is activated!");
-  }else{
-    current_assemble_ = false;
-    //adjust NodeHandle according to robot state
-    ros::NodeHandle temp_nh(nh, airframe_);
-    nh = temp_nh;
+  ros::NodeHandle assemble_control_nh = ros::NodeHandle(nh_, "assemble/controller");
+  assemble_control_nh.param("torque_allocation_matrix_inv_pub_interval", torque_allocation_matrix_inv_pub_interval_, 0.1);
+  assemble_control_nh.param("wrench_allocation_matrix_pub_interval", wrench_allocation_matrix_pub_interval_, 0.1);
 
-    HydrusTiltedLQIController::initialize(nh, nhp, robot_model, estimator, navigator, ctrl_loop_rate);
+  assemble_mode_controller_ = boost::make_shared<FullyActuatedController>();
+  dessemble_mode_controller_ = boost::make_shared<HydrusTiltedLQIController>();
+  current_assemble_ = assemble_robot_model_->isAssemble();
 
-    ROS_INFO("%s controller is activated", airframe_.c_str());
-  }
-  nh_ = nh;
-  nhp_ = nhp;
-  estimator_  = estimator;
-  robot_model_ = robot_model;
-  navigator_ = navigator;
-  ctrl_loop_du_ = ctrl_loop_rate;
+  assemble_robot_model_->assemble(); //switching robot model
+  assemble_mode_controller_->initialize(assemble_nh_, nhp, assemble_robot_model_, estimator, navigator, ctrl_loop_rate);
+  assemble_robot_model_->dessemble(); //switching robot model
+  dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator, ctrl_loop_rate);
+
+  //adjust robot model for true state
+  if(current_assemble_)
+    {
+      assemble_robot_model_->assemble();
+    }
+  else
+    {
+      assemble_robot_model_->dessemble();
+    }
+
 }
 
 //override
-
-void AssembleController::controlCore(){
+bool AssembleController::update(){
   if(assemble_robot_model_->isAssemble()){
-    FullyActuatedController::controlCore();
+    if(!assemble_mode_controller_->ControlBase::update()) return false;
+    assemble_mode_controller_->controlCore();
   }else{
-    HydrusTiltedLQIController::controlCore();
+    if(!dessemble_mode_controller_->ControlBase::update()) return false;
+    dessemble_mode_controller_->controlCore();
   }
+  sendCmd();
 }
 
 void AssembleController::sendCmd(){
   if(assemble_robot_model_->isAssemble()){
-    FullyActuatedController::sendCmd();
-  }else{
-    HydrusTiltedLQIController::sendCmd();
-  }
-}
-
-bool AssembleController::update(){
-  if(assemble_robot_model_->isAssemble()){
-    if(!current_assemble_)
+    assemble_mode_controller_->PoseLinearController::sendCmd();
+    spinal::FourAxisCommand flight_command_data;
+    flight_command_data.angles[0] = navigator_->getTargetRPY().x();
+    flight_command_data.angles[1] = navigator_->getTargetRPY().y();
+    flight_command_data.angles[2] = assemble_mode_controller_->getCandidateYawTerm() ;
+    // choose correct 4 elements
+    auto all_target_base_thrust = assemble_mode_controller_->getTargetBaseThrust(); // 8 elements
+    if(airframe_ == "male") {
+      std::vector<float> target_base_thrust {all_target_base_thrust.begin(), all_target_base_thrust.begin()+4};
+      flight_command_data.base_thrust = target_base_thrust;
+    }else{
+      std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 5, all_target_base_thrust.begin()+8};
+      flight_command_data.base_thrust = target_base_thrust;
+    }
+    flight_cmd_pub_.publish(flight_command_data);
+    // send truncated P matrix
+    // copy from  sendTorqueAllocationMatrixInv(); in fully_actuated_controller.cpp
+    if (ros::Time::now().toSec() - torque_allocation_matrix_inv_pub_stamp_ > torque_allocation_matrix_inv_pub_interval_)
       {
-        current_assemble_ = true;
-        //change controller
-        FullyActuatedController::initialize(nh_, nhp_, robot_model_, estimator_, navigator_, ctrl_loop_du_);
+        torque_allocation_matrix_inv_pub_stamp_ = ros::Time::now().toSec();
+
+        spinal::TorqueAllocationMatrixInv torque_allocation_matrix_inv_msg;
+        torque_allocation_matrix_inv_msg.rows.resize(4); //resize row of torque_allocation_matrix_inv to 4 for quadrotor
+        Eigen::MatrixXd torque_allocation_matrix_inv = assemble_mode_controller_->getQMatInv().rightCols(3);
+        if (torque_allocation_matrix_inv.cwiseAbs().maxCoeff() > INT16_MAX * 0.001f)
+          ROS_ERROR("Torque Allocation Matrix overflow");
+
+        int offset = 0;
+        if (airframe_ == "female") offset = 4;
+
+        for (unsigned int i = 0; i < 4; i++)
+          {
+            torque_allocation_matrix_inv_msg.rows.at(i).x = torque_allocation_matrix_inv(i + offset ,0) * 1000;
+            torque_allocation_matrix_inv_msg.rows.at(i).y = torque_allocation_matrix_inv(i + offset ,1) * 1000;
+            torque_allocation_matrix_inv_msg.rows.at(i).z = torque_allocation_matrix_inv(i + offset ,2) * 1000;
+          }
+        torque_allocation_matrix_inv_pub_.publish(torque_allocation_matrix_inv_msg);
       }
-    return FullyActuatedController::update();
-  }else{
-    if(current_assemble_)
-      {
-        current_assemble_ = false;
-        //change controller
-        HydrusTiltedLQIController::initialize(nh_, nhp_, robot_model_, estimator_, navigator_, ctrl_loop_du_);
-      }
-    return HydrusTiltedLQIController::update();
+  }
+
+  else {
+    dessemble_mode_controller_->PoseLinearController::sendCmd();
+    spinal::FourAxisCommand flight_command_data;
+    flight_command_data.angles[0] = dessemble_mode_controller_->getTargetRoll();
+    flight_command_data.angles[1] = dessemble_mode_controller_->getTargetPitch();
+    flight_command_data.angles[2] = dessemble_mode_controller_->getCandidateYawTerm();
+    flight_command_data.base_thrust = dessemble_mode_controller_->getTargetBaseThrust();
+    flight_cmd_pub_.publish(flight_command_data);
   }
 }
-
-
-void AssembleController::rosParamInit(){
-  if(assemble_robot_model_->isAssemble()){
-    FullyActuatedController::rosParamInit();
-  }else{
-    HydrusTiltedLQIController::rosParamInit();
-  }
-}
-
 
 /* plugin registration */
 #include <pluginlib/class_list_macros.h>

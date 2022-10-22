@@ -41,7 +41,7 @@
 
 namespace aerial_robot_control
 {
-  class AssembleController: public HydrusTiltedLQIController, public FullyActuatedController
+  class AssembleController: public FullyActuatedController
   {
 
   public:
@@ -56,21 +56,19 @@ namespace aerial_robot_control
 
     boost::shared_ptr<AssembleTiltedRobotModel> assemble_robot_model_;
 
+    bool update() override;
+
   private:
+    void sendCmd() override;
     bool current_assemble_;
 
+    boost::shared_ptr<HydrusTiltedLQIController> dessemble_mode_controller_;
+    boost::shared_ptr<FullyActuatedController> assemble_mode_controller_;
+
   protected:
-
+    ros::NodeHandle assemble_nh_;
+    ros::NodeHandle dessemble_nh_;
     std::string airframe_;
-
-    void AssembleInit();
-    void DessembleInit();
-
-    virtual void controlCore() override;
-    virtual void sendCmd() override;
-    virtual bool update() override;
-    void rosParamInit() override;
-
 
   };
 };

@@ -13,30 +13,30 @@ AssembleTiltedRobotModel::AssembleTiltedRobotModel(bool init_with_rosparam,
   getParamFromRos();
   if(initial_assemble_)
     {
-      ROS_INFO("assemble mode");
-      assemble_mode_ = true;
-      dessemble_mode_ = false;
+      assemble();
     }
   else
     {
-      ROS_INFO("dessemble mode");
-      assemble_mode_ = false;
-      dessemble_mode_ = true;
+      dessemble();
     }
 }
-
-
 
 void AssembleTiltedRobotModel::assemble()
 {
   assemble_mode_ = true;
   dessemble_mode_ = false;
-
+  //initialize urdf model
+  urdf::Model empty_model;
+  aerial_robot_model::RobotModel::setUrdfModel(empty_model);
   // switch urdf mode
   initializeRotorNum();
   kinematicsInit("assemble_robot");
+  stabilityInit();
   staticsInit("assemble_robot");
-  ROS_INFO("switched to assemble model");
+  ROS_INFO("Switched to assemble model");
+  // int rotor_num = aerial_robot_model::RobotModel::getRotorNum();
+  // ROS_INFO("Rotor num is %d",rotor_num);
+  initializeRviz("assemble_robot");
   aerial_robot_model::RobotModel::updateRobotModel(); // update robot model instantly
 
 }
@@ -45,20 +45,33 @@ void AssembleTiltedRobotModel::dessemble()
 {
   assemble_mode_ = false;
   dessemble_mode_ = true;
-
+  //initialize urdf model
+  urdf::Model empty_model;
+  aerial_robot_model::RobotModel::setUrdfModel(empty_model);
   // switch urdf mode
   initializeRotorNum();
   kinematicsInit("dessemble_robot");
+  stabilityInit();
   staticsInit("dessemble_robot");
-
+  ROS_INFO("Switched to dessemble model");
+  // int rotor_num = aerial_robot_model::RobotModel::getRotorNum();
+  // ROS_INFO("Rotor num is %d",rotor_num);
+  initializeRviz("dessemble_robot");
   HydrusTiltedRobotModel::updateRobotModel(); // update robot model instantly
-  ROS_INFO("switched to dessemble model");
 }
 
 void AssembleTiltedRobotModel::getParamFromRos()
 {
   ros::NodeHandle nh;
   nh.param("initial_assemble", initial_assemble_, false);
+}
+
+void AssembleTiltedRobotModel::initializeRviz(const std::string param){
+  ros::NodeHandle nh;
+  std::string xml_string;
+  std::string robot_description = "robot_description";
+  nh.getParam(param,xml_string);
+  nh.setParam(robot_description.c_str(),xml_string.c_str());
 }
 
 /* plugin registration */

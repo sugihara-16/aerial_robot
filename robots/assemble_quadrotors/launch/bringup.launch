@@ -38,20 +38,19 @@
     <rosparam file="$(arg config_dir)/AssembleRobotModel.yaml" command="load"/>
 
     ###########  Motor Config  ###########
-    <rosparam file="$(arg config_dir)/MotorInfo_5inch.yaml" command="load" />
+    <!-- <rosparam file="$(arg config_dir)/MotorInfo_5inch.yaml" command="load" /> -->
+    <rosparam file="$(arg config_dir)/AssembleMotorInfo_5inch.yaml" command="load" />
 
     ###########  Battery Config  ###########
     <rosparam file="$(arg config_dir)/Battery.yaml" command="load" />
 
     ###########  Control  ###########
     # TODO: modification to switch controller
-    <!-- <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"  if="$(eval initial_assemble)"/> -->
-    <rosparam file="$(arg config_dir)/AssembleControl.yaml" command="load"  if="$(eval initial_assemble)"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"  if="$(eval airframe == 'test' and initial_assemble !=true )"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt.yaml" command="load"  if="$(eval airframe == 'neutral' and initial_assemble !=true )"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_female.yaml" command="load"  if="$(eval airframe == 'female' and initial_assemble !=true )"/>
-    <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male' and initial_assemble !=true )"/>
+    <rosparam file="$(arg config_dir)/AssembleControl.yaml" command="load"/>
 
+    <!-- <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male')"/> -->
+    <!-- <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"/> -->
+    <!-- <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"/> -->
 
     ###########  Sensor Fusion  ###########
     <rosparam file="$(arg config_dir)/StateEstimation.yaml" command="load" />
@@ -63,11 +62,32 @@
   </group>
 
   ###########  Base Platform  ###########
-  <node pkg="aerial_robot_base" type="aerial_robot_base_node" name="aerial_robot_base_node" ns="$(arg robot_ns)" output="screen" >
+  <!-- <node pkg="aerial_robot_base" type="aerial_robot_base_node" name="aerial_robot_base_node" ns="$(arg robot_ns)" output="screen" launch-prefix="gdb -ex run -\-args"> -->
+  <node pkg="aerial_robot_base" type="aerial_robot_base_node" name="aerial_robot_base_node" ns="$(arg robot_ns)" output="screen">
     <param name="tf_prefix" value="$(arg robot_ns)"/>
     <param name="param_verbose" value="false"/>
     <param name="main_rate" value="40"/>
     <param name="airframe" value="$(arg airframe)"/>
+
+    <remap from="assemble/motor_info" to="/$(arg robot_ns)/motor_info" />
+    <remap from="male/motor_info" to="/$(arg robot_ns)/motor_info" />
+    <remap from="female/motor_info" to="/$(arg robot_ns)/motor_info" />
+    
+    <remap from="assemble/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
+    <remap from="male/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
+    <remap from="female/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
+
+    <remap from="assemble/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
+    <remap from="male/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
+    <remap from="female/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
+
+    <remap from="assemble/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
+    <remap from="male/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
+    <remap from="female/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
+    
+    <remap from="assemble/uav_info" to="/$(arg robot_ns)/uav_info" />
+    <remap from="male/uav_info" to="/$(arg robot_ns)/uav_info" />
+    <remap from="female/uav_info" to="/$(arg robot_ns)/uav_info" />
   </node>
 
   ###########  Robot Model  ###########

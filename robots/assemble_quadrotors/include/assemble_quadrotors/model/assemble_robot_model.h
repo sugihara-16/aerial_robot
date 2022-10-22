@@ -61,4 +61,5 @@ private:
   // private functions
   void getParamFromRos();
   void initializeRotorNum(){ rotor_num_=0; }
+  void initializeRviz(const std::string);
 };

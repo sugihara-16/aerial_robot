@@ -82,7 +82,7 @@ male:
 
     # LQI gain generator
     lqi:
-      gain_generate_rate: 15.0
+      gain_generate_rate: 0.0
       gyro_moment_compensation: true
       clamp_gain: true
 
@@ -136,7 +136,7 @@ female:
 
     # LQI gain generator
     lqi:
-      gain_generate_rate: 15.0
+      gain_generate_rate: 0.0
       gyro_moment_compensation: true
       clamp_gain: true
 

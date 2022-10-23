@@ -23,8 +23,6 @@ AssembleTiltedRobotModel::AssembleTiltedRobotModel(bool init_with_rosparam,
 
 void AssembleTiltedRobotModel::assemble()
 {
-  assemble_mode_ = true;
-  dessemble_mode_ = false;
   //initialize urdf model
   urdf::Model empty_model;
   aerial_robot_model::RobotModel::setUrdfModel(empty_model);
@@ -39,12 +37,13 @@ void AssembleTiltedRobotModel::assemble()
   initializeRviz("assemble_robot");
   aerial_robot_model::RobotModel::updateRobotModel(); // update robot model instantly
 
+  // switch the model in the end
+  assemble_mode_ = true;
+  dessemble_mode_ = false;
 }
 
 void AssembleTiltedRobotModel::dessemble()
 {
-  assemble_mode_ = false;
-  dessemble_mode_ = true;
   //initialize urdf model
   urdf::Model empty_model;
   aerial_robot_model::RobotModel::setUrdfModel(empty_model);
@@ -58,6 +57,10 @@ void AssembleTiltedRobotModel::dessemble()
   // ROS_INFO("Rotor num is %d",rotor_num);
   initializeRviz("dessemble_robot");
   HydrusTiltedRobotModel::updateRobotModel(); // update robot model instantly
+
+  // switch the mode in the end
+  assemble_mode_ = false;
+  dessemble_mode_ = true;
 }
 
 void AssembleTiltedRobotModel::getParamFromRos()

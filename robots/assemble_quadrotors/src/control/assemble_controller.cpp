@@ -17,6 +17,8 @@ void AssembleController::initialize(ros::NodeHandle nh,
   assemble_nh_ = ros::NodeHandle(nh_, "assemble");
   dessemble_nh_ = ros::NodeHandle(nh_, airframe_);
 
+  desired_baselink_rot_pub_ = nh_.advertise<spinal::DesireCoord>("desire_coordinate", 1);
+
   ros::NodeHandle assemble_control_nh = ros::NodeHandle(nh_, "assemble/controller");
   assemble_control_nh.param("torque_allocation_matrix_inv_pub_interval", torque_allocation_matrix_inv_pub_interval_, 0.1);
   assemble_control_nh.param("wrench_allocation_matrix_pub_interval", wrench_allocation_matrix_pub_interval_, 0.1);
@@ -29,6 +31,8 @@ void AssembleController::initialize(ros::NodeHandle nh,
   assemble_mode_controller_->initialize(assemble_nh_, nhp, assemble_robot_model_, estimator, navigator, ctrl_loop_rate);
   assemble_robot_model_->dessemble(); //switching robot model
   dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator, ctrl_loop_rate);
+  dessemble_mode_controller_->optimalGain(); // calculate LQI gain for once
+
 
   //adjust robot model for true state
   if(current_assemble_)
@@ -40,6 +44,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
       assemble_robot_model_->dessemble();
     }
 
+  send_once_flag_ = true;
 }
 
 //override
@@ -47,9 +52,20 @@ bool AssembleController::update(){
   if(assemble_robot_model_->isAssemble()){
     if(!assemble_mode_controller_->ControlBase::update()) return false;
     assemble_mode_controller_->controlCore();
+
+    if(!current_assemble_) {
+      send_once_flag_ = true;
+      current_assemble_ = true;
+    }
   }else{
     if(!dessemble_mode_controller_->ControlBase::update()) return false;
     dessemble_mode_controller_->controlCore();
+
+    if(current_assemble_) {
+      send_once_flag_ = true;
+      current_assemble_ = false;
+    }
+
   }
   sendCmd();
 }
@@ -71,29 +87,36 @@ void AssembleController::sendCmd(){
       flight_command_data.base_thrust = target_base_thrust;
     }
     flight_cmd_pub_.publish(flight_command_data);
+
+    // send command for once
+    if (!send_once_flag_) return;
+
     // send truncated P matrix
     // copy from  sendTorqueAllocationMatrixInv(); in fully_actuated_controller.cpp
-    if (ros::Time::now().toSec() - torque_allocation_matrix_inv_pub_stamp_ > torque_allocation_matrix_inv_pub_interval_)
+    spinal::TorqueAllocationMatrixInv torque_allocation_matrix_inv_msg;
+    torque_allocation_matrix_inv_msg.rows.resize(4); //resize row of torque_allocation_matrix_inv to 4 for quadrotor
+    Eigen::MatrixXd torque_allocation_matrix_inv = assemble_mode_controller_->getQMatInv().rightCols(3);
+    if (torque_allocation_matrix_inv.cwiseAbs().maxCoeff() > INT16_MAX * 0.001f)
+      ROS_ERROR("Torque Allocation Matrix overflow");
+
+    int offset = 0;
+    if (airframe_ == "female") offset = 4;
+
+    for (unsigned int i = 0; i < 4; i++)
       {
-        torque_allocation_matrix_inv_pub_stamp_ = ros::Time::now().toSec();
-
-        spinal::TorqueAllocationMatrixInv torque_allocation_matrix_inv_msg;
-        torque_allocation_matrix_inv_msg.rows.resize(4); //resize row of torque_allocation_matrix_inv to 4 for quadrotor
-        Eigen::MatrixXd torque_allocation_matrix_inv = assemble_mode_controller_->getQMatInv().rightCols(3);
-        if (torque_allocation_matrix_inv.cwiseAbs().maxCoeff() > INT16_MAX * 0.001f)
-          ROS_ERROR("Torque Allocation Matrix overflow");
-
-        int offset = 0;
-        if (airframe_ == "female") offset = 4;
-
-        for (unsigned int i = 0; i < 4; i++)
-          {
-            torque_allocation_matrix_inv_msg.rows.at(i).x = torque_allocation_matrix_inv(i + offset ,0) * 1000;
-            torque_allocation_matrix_inv_msg.rows.at(i).y = torque_allocation_matrix_inv(i + offset ,1) * 1000;
-            torque_allocation_matrix_inv_msg.rows.at(i).z = torque_allocation_matrix_inv(i + offset ,2) * 1000;
-          }
-        torque_allocation_matrix_inv_pub_.publish(torque_allocation_matrix_inv_msg);
+        torque_allocation_matrix_inv_msg.rows.at(i).x = torque_allocation_matrix_inv(i + offset ,0) * 1000;
+        torque_allocation_matrix_inv_msg.rows.at(i).y = torque_allocation_matrix_inv(i + offset ,1) * 1000;
+        torque_allocation_matrix_inv_msg.rows.at(i).z = torque_allocation_matrix_inv(i + offset ,2) * 1000;
       }
+    torque_allocation_matrix_inv_pub_.publish(torque_allocation_matrix_inv_msg);
+
+    // send horizontal CoG frame after switching from dessemble mode
+    spinal::DesireCoord coord_msg;
+    coord_msg.roll = 0;
+    coord_msg.pitch = 0;
+    desired_baselink_rot_pub_.publish(coord_msg);
+
+    send_once_flag_ = false;
   }
 
   else {
@@ -104,6 +127,23 @@ void AssembleController::sendCmd(){
     flight_command_data.angles[2] = dessemble_mode_controller_->getCandidateYawTerm();
     flight_command_data.base_thrust = dessemble_mode_controller_->getTargetBaseThrust();
     flight_cmd_pub_.publish(flight_command_data);
+
+    // send command for once
+    if (!send_once_flag_) return;
+
+    // send LQI gain
+    dessemble_mode_controller_->publishGain();
+
+    // send tilted CoG frame after switching from dessemble mode
+    double roll,pitch, yaw;
+    assemble_robot_model_->getCogDesireOrientation<KDL::Rotation>().GetRPY(roll, pitch, yaw);
+
+    spinal::DesireCoord coord_msg;
+    coord_msg.roll = roll;
+    coord_msg.pitch = pitch;
+    desired_baselink_rot_pub_.publish(coord_msg);
+
+    send_once_flag_ = false;
   }
 }
 

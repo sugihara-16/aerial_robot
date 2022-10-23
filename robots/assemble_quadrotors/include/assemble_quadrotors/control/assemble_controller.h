@@ -65,6 +65,10 @@ namespace aerial_robot_control
     boost::shared_ptr<HydrusTiltedLQIController> dessemble_mode_controller_;
     boost::shared_ptr<FullyActuatedController> assemble_mode_controller_;
 
+    ros::Publisher desired_baselink_rot_pub_;
+
+    bool send_once_flag_;
+
   protected:
     ros::NodeHandle assemble_nh_;
     ros::NodeHandle dessemble_nh_;

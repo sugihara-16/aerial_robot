@@ -53,6 +53,10 @@ namespace aerial_robot_control
                     double ctrl_loop_rate);
 
     void controlCore() override;
+
+    bool optimalGain() override;
+    void publishGain() override;
+
   protected:
 
     ros::Publisher desired_baselink_rot_pub_;
@@ -62,9 +66,6 @@ namespace aerial_robot_control
 
     double z_limit_;
 
-
-    bool optimalGain() override;
-    void publishGain() override;
     void rosParamInit() override;
 
   };

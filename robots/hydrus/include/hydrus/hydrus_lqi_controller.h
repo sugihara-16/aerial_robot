@@ -71,6 +71,9 @@ namespace aerial_robot_control
     virtual void controlCore() override;
     virtual void sendCmd() override;
 
+    virtual bool optimalGain();
+    virtual void publishGain();
+
   protected:
 
     boost::shared_ptr<HydrusRobotModel> hydrus_robot_model_;
@@ -105,10 +108,7 @@ namespace aerial_robot_control
 
     virtual void rosParamInit();
 
-    virtual bool optimalGain();
     virtual void clampGain();
-    virtual void publishGain();
-
     virtual void sendFourAxisCommand();
 
     virtual void allocateYawTerm();

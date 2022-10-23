@@ -115,6 +115,10 @@ bool HydrusTiltedLQIController::optimalGain()
 
   // compensation for gyro moment
   p_mat_pseudo_inv_ = aerial_robot_model::pseudoinverse(P.middleRows(2, 4));
+
+  // clamp gain
+  clampGain();
+
   return true;
 }
 

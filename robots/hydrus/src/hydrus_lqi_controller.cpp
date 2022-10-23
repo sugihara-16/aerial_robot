@@ -164,6 +164,11 @@ void HydrusLQIController::gainGeneratorFunc()
   ros::NodeHandle control_nh(nh_, "controller");
   ros::NodeHandle lqi_nh(control_nh, "lqi");
   lqi_nh.param("gain_generate_rate", rate, 15.0);
+  if (rate == 0)
+    {
+      // no lopp to get LQI gain
+      return;
+    }
   ros::Rate loop_rate(rate);
 
   while(ros::ok())
@@ -172,7 +177,6 @@ void HydrusLQIController::gainGeneratorFunc()
         {
           if(optimalGain())
             {
-              clampGain();
               publishGain();
             }
           else
@@ -288,6 +292,10 @@ bool HydrusLQIController::optimalGain()
 
   // compensation for gyro moment
   p_mat_pseudo_inv_ = aerial_robot_model::pseudoinverse(P.middleRows(2, lqi_mode_));
+
+  // clamp gain
+  clampGain();
+
   return true;
 }
 

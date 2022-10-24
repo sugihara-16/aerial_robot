@@ -8,7 +8,7 @@
  ```  PC --spinal--ESC---rotor  ```
  ```  |              |          ```
  ```  |-- power supply          ```
- ```  |                         ```
+ ```  |                         ``` 
  ```  |--force sensor           ```
  ``````````````````````````````````
  ``````````````````````````````````
@@ -37,10 +37,10 @@
      ```
      $ roslaunch motor_test test.launch max_pwm_value:=1200 raise_duration:=2  brake_duration:=5 run_duration:=2
      ```
-
+     
 6. Start logging by `rostopic pub -1 /start_log_cmd std_msgs/Empty "{}" `.
 
-7. Cool down your motor by sending 'rostopic pub -1 /pwm_test std_msgs/Float32 "data: 0.54" ' and when it is cool enough, send 'rostopic pub -1 /pwm_test std_msgs/Float32 "data: 0.5" '，and then start a next test.
+7. Cool down your motor by sending 'rostopic pub -1 /pwm_test std_msgs/Float32 "data: 0.54" ' and when it is cool enough, send 'rostopic pub -1 /pwm_test std_msgs/Float32 "data: 0.5" '，and then start next test.
 
 ## General calib for ESC:
 

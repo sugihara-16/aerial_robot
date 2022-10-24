@@ -119,6 +119,7 @@
   <include file="$(find assemble_quadrotors)/launch/includes/docking_mechanism.launch" >
     <arg name="real_machine" value="$(arg real_machine)" />
     <arg name="robot_ns" value="$(arg robot_ns)" />
+    <arg name="airframe" value="$(arg airframe)"/>
     <arg name="port" value="/dev/docking_controller" />
     <arg name="baud" value="115200" />
   </include >

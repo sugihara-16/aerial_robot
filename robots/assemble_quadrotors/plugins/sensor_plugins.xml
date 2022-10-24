@@ -1,0 +1,7 @@
+<library path="lib/libsensor_pluginlib">
+
+  <class name="sensor_plugin/assemble_mocap" type="sensor_plugin::AssembleMocap" base_class_type="sensor_plugin::SensorBase">
+    <description>Mocap sensor plugin for assemble quadrotors </description>
+  </class>
+
+</library>

@@ -88,65 +88,18 @@ void Mocap::initialize(ros::NodeHandle nh,
   lpf_vel_ = IirFilter(sample_freq_, cutoff_vel_freq_, 3);
   lpf_angular_ = IirFilter(sample_freq_, cutoff_vel_freq_, 3);
 
-      std::string topic_name;
-      getParam<std::string>("mocap_sub_name", topic_name, std::string("pose"));
-      ros::TransportHints hint = ros::TransportHints();
-      bool mocap_udp;
-      getParam<bool>("mocap_udp", mocap_udp, false);
-      if (mocap_udp) {
-	hint = ros::TransportHints().udp();
-	ROS_INFO("use UDP for mocap subscribe");
-      }
+  std::string topic_name;
+  getParam<std::string>("mocap_sub_name", topic_name, std::string("pose"));
 
-      mocap_sub_ = nh_.subscribe(topic_name, 1, &Mocap::poseCallback, this, hint); // buffer size 1: only need the latest value.
-      nhp_.param("ground_truth_sub_name", topic_name, std::string("ground_truth"));
-      ground_truth_sub_ = nh_.subscribe(topic_name, 1, &Mocap::groundTruthCallback, this);
-    }
-
-    ~Mocap() {}
-
-    Mocap():
-      sensor_plugin::SensorBase(),
-      raw_pos_(0, 0, 0),
-      raw_vel_(0, 0, 0),
-      pos_(0, 0, 0),
-      vel_(0, 0, 0),
-      prev_raw_pos_(0, 0, 0),
-      prev_raw_vel_(0, 0, 0),
-      prev_raw_q_(0, 0, 0, 1),
-      receive_groundtruth_odom_(false)
-    {
-      ground_truth_pose_.states.resize(6);
-      ground_truth_pose_.states[0].id = "x";
-      ground_truth_pose_.states[0].state.resize(2);
-      ground_truth_pose_.states[1].id = "y";
-      ground_truth_pose_.states[1].state.resize(2);
-      ground_truth_pose_.states[2].id = "z";
-      ground_truth_pose_.states[2].state.resize(2);
-      ground_truth_pose_.states[3].id = "roll";
-      ground_truth_pose_.states[3].state.resize(2);
-      ground_truth_pose_.states[4].id = "pitch";
-      ground_truth_pose_.states[4].state.resize(2);
-      ground_truth_pose_.states[5].id = "yaw";
-      ground_truth_pose_.states[5].state.resize(2);
-    }
-
-    static constexpr int TIME_SYNC_CALIB_COUNT = 10;
-
-  private:
-    /* ros */
-    ros::Subscriber mocap_sub_, ground_truth_sub_;
-
-    /* ros param */
-    double sample_freq_;
-    double cutoff_pos_freq_;
-    double cutoff_vel_freq_;
-
-    double pos_noise_sigma_, angle_noise_sigma_, acc_bias_noise_sigma_;
-
-    IirFilter lpf_pos_; /* x, y, z */
-    IirFilter lpf_vel_; /* x, y, z */
-    IirFilter lpf_angular_; /* yaw angular velocity */
+#ifdef ARM_MELODIC //https://github.com/ros/ros_comm/issues/1404
+  mocap_sub_ = nh_.subscribe(topic_name, 1, &Mocap::poseCallback, this); // since we do not use time_sync mode for mocap, so only need the latest value.
+#else
+  mocap_sub_ = nh_.subscribe(topic_name, 1, &Mocap::poseCallback, this, ros::TransportHints().udp()); // since we do not use time_sync mode for mocap, so only need the latest value.
+  ROS_INFO("use UDP for mocap topic subscriber in ground truth mode");
+#endif
+  nhp_.param("ground_truth_sub_name", topic_name, std::string("ground_truth"));
+  ground_truth_sub_ = nh_.subscribe(topic_name, 1, &Mocap::groundTruthCallback, this);
+}
 
 void Mocap::poseCallback(const geometry_msgs::PoseStampedConstPtr & msg)
 {
@@ -428,7 +381,6 @@ void Mocap::estimateProcess(ros::Time stamp)
 /* plugin registration */
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(sensor_plugin::Mocap, sensor_plugin::SensorBase);
-
 
 
 

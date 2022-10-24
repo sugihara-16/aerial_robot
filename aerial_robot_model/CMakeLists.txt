@@ -107,18 +107,18 @@ add_library(numerical_jacobians test/aerial_robot_model/numerical_jacobians.cpp)
 target_link_libraries(numerical_jacobians aerial_robot_model ${catkin_LIBRARIES})
 
 
-install(DIRECTORY include/${PROJECT_NAME}/ test/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
+# install(DIRECTORY include/${PROJECT_NAME}/ test/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 
-install(TARGETS transformable_aerial_robot_model transformable_aerial_robot_model_ros servo_bridge numerical_jacobians
-  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-)
+# install(TARGETS transformable_aerial_robot_model transformable_aerial_robot_model_ros servo_bridge numerical_jacobians
+#   DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+# )
 
-install(TARGETS rotor_tf_publisher interactive_marker_tf_broadcaster servo_bridge_node
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# install(TARGETS rotor_tf_publisher interactive_marker_tf_broadcaster servo_bridge_node
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
-install(DIRECTORY launch script
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  USE_SOURCE_PERMISSIONS
-)
+# install(DIRECTORY launch script
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+#   USE_SOURCE_PERMISSIONS
+# )

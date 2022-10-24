@@ -1,35 +1,45 @@
-//
-//  @file KrsServo1.ino
-//  @brief KrsServoSample1
-//  @author Kondo Kagaku Co.,Ltd.
-//  @date 2017/12/26
-//
-//  ID:0のサーボをポジション指定で動かす
-//  範囲は、左5500 - 中央7500 - 右9500
-//  0.5秒ごとに指定数値まで動く
-//  ICSの通信にはHardwareSerialを使います。
-//
-
-
 #include <IcsHardSerialClass.h>
+#include <ros.h>
+#include <std_msgs/String.h>
+#include <SPI.h>
+
 
 const byte EN_PIN = 2;
 const long BAUDRATE = 115200;
-const int TIMEOUT = 1000;		//通信できてないか確認用にわざと遅めに設定
+const int TIMEOUT = 1000;
+const int open_pos = 8200;
+const int close_pos = 11300;
 
-IcsHardSerialClass krs(&Serial,EN_PIN,BAUDRATE,TIMEOUT);  //インスタンス＋ENピン(2番ピン)およびUARTの指定
+IcsHardSerialClass krs(&Serial,EN_PIN,BAUDRATE,TIMEOUT);
 
+ros::NodeHandle nh;
+
+void messageCb(const std_msgs::String& msg) {
+  krs.begin();
+  String command = msg.data;
+  if(command == "open"){
+    krs.setPos(0,open_pos); //open the hand
+    nh.loginfo("Open the hand");
+  }else{
+    krs.setPos(0,close_pos); //close the hand
+    nh.loginfo("Close the hand");
+  }
+   nh.getHardware()->setBaud(BAUDRATE); 
+}
+
+
+ros::Subscriber<std_msgs::String> hand_command_sub("hand_command", &messageCb);
 
 void setup() {
-  // put your setup code here, to run once:
-  krs.begin();  //サーボモータの通信初期設定
+  krs.begin();
+  krs.setPos(0,close_pos); //close the hand
+  nh.getHardware()->setBaud(BAUDRATE);
+  nh.initNode();
+  nh.subscribe(hand_command_sub);
 }
 
 
 void loop() {
-  // put your main code here, to run repeatedly:
-    krs.setPos(0,8200);      //位置指令　ID:0サーボを7500へ 中央
-    delay(3000);              //0.5秒待つ
-    krs.setPos(0,11500);      //位置指令　ID:0サーボを9500へ 右
-    delay(1000);              //0.5秒待つ
+  nh.spinOnce();
+  delay(30);
 }

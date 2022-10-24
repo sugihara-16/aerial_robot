@@ -20,13 +20,13 @@ namespace aerial_robot_navigation
   {
     if(assemble_robot_model_->isAssemble())
       {
+        ROS_INFO("Switched to dessemble navigation");
         assemble_robot_model_->dessemble();
-        ROS_INFO("switched to dessemble navigation");
       }
     else
       {
+        ROS_INFO("Switched to assemble navigation");
         assemble_robot_model_->assemble();
-        ROS_INFO("switched to assemble navigation");
       }
   }
 };

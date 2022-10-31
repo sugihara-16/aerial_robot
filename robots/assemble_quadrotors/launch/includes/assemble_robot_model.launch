@@ -20,7 +20,7 @@
     <param name="dessemble_robot" command="$(find xacro)/xacro '$(arg dessemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
 
     <!-- tf publisher from joint_state -->
-    <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="state_publisher">
+    <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="robot_state_publisher">
       <param name="tf_prefix" value="$(arg robot_ns)" />
     </node>
     <node name="$(anon rotor_tf_publisher)" pkg="aerial_robot_model" type="rotor_tf_publisher" unless="$(arg need_joint_state)">

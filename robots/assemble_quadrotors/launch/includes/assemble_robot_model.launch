@@ -13,14 +13,14 @@
     <!--initial state -->
     <param name="initial_assemble" value="$(arg initial_assemble)"/>
     <!-- normal state -->
-    <param name="robot_description" command="$(find xacro)/xacro.py '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
+    <param name="robot_description" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- assemble state -->
-    <param name="assemble_robot" command="$(find xacro)/xacro.py '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
+    <param name="assemble_robot" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- dessemble state -->
-    <param name="dessemble_robot" command="$(find xacro)/xacro.py '$(arg dessemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
+    <param name="dessemble_robot" command="$(find xacro)/xacro '$(arg dessemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
 
     <!-- tf publisher from joint_state -->
-    <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="state_publisher">
+    <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="robot_state_publisher">
       <param name="tf_prefix" value="$(arg robot_ns)" />
     </node>
     <node name="$(anon rotor_tf_publisher)" pkg="aerial_robot_model" type="rotor_tf_publisher" unless="$(arg need_joint_state)">

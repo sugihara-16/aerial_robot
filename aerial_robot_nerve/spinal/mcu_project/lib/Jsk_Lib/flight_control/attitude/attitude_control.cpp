@@ -184,6 +184,11 @@ void AttitudeController::pwmsControl(void)
   }
 #endif
 
+  int k = 0;
+  if (target_pwm_[0] == 0.5) {
+	  k = 1;
+  }
+
   /* direct pwm type */
   pwm_htim1_->Instance->CCR1 = (uint32_t)(target_pwm_[0] * pwm_htim1_->Init.Period);
   pwm_htim1_->Instance->CCR2 = (uint32_t)(target_pwm_[1] * pwm_htim1_->Init.Period);

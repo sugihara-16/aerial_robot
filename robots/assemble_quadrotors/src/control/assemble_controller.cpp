@@ -18,6 +18,8 @@ void AssembleController::initialize(ros::NodeHandle nh,
   dessemble_nh_ = ros::NodeHandle(nh_, airframe_);
 
   desired_baselink_rot_pub_ = nh_.advertise<spinal::DesireCoord>("desire_coordinate", 1);
+  flight_cmd_pub_ = nh_.advertise<spinal::FourAxisCommand>("four_axes/command", 1);
+  torque_allocation_matrix_inv_pub_ = nh_.advertise<spinal::TorqueAllocationMatrixInv>("torque_allocation_matrix_inv", 1);
 
   ros::NodeHandle assemble_control_nh = ros::NodeHandle(nh_, "assemble/controller");
   assemble_control_nh.param("torque_allocation_matrix_inv_pub_interval", torque_allocation_matrix_inv_pub_interval_, 0.1);

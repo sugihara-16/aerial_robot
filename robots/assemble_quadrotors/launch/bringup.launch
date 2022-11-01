@@ -69,25 +69,27 @@
     <param name="main_rate" value="40"/>
     <param name="airframe" value="$(arg airframe)"/>
 
-    <remap from="assemble/motor_info" to="/$(arg robot_ns)/motor_info" />
-    <remap from="male/motor_info" to="/$(arg robot_ns)/motor_info" />
-    <remap from="female/motor_info" to="/$(arg robot_ns)/motor_info" />
+    <remap from="/$(arg robot_ns)/assemble/motor_info" to="/$(arg robot_ns)/motor_info" />
+    <remap from="/$(arg robot_ns)/male/motor_info" to="/$(arg robot_ns)/motor_info" />
+    <remap from="/$(arg robot_ns)/female/motor_info" to="/$(arg robot_ns)/motor_info" />
     
-    <remap from="assemble/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
-    <remap from="male/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
-    <remap from="female/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
+    <remap from="/$(arg robot_ns)/assemble/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
+    <remap from="/$(arg robot_ns)/male/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
+    <remap from="/$(arg robot_ns)/female/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
 
-    <remap from="assemble/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
-    <remap from="male/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
-    <remap from="female/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
+    <remap from="/$(arg robot_ns)/assemble/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
+    <remap from="/$(arg robot_ns)/male/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
+    <remap from="/$(arg robot_ns)/female/p_matrix_pseudo_inverse_inertia" to="/$(arg robot_ns)/p_matrix_pseudo_inverse_inertia" />
 
-    <remap from="assemble/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
-    <remap from="male/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
-    <remap from="female/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
+    <remap from="/$(arg robot_ns)/assemble/torque_allocation_matrix_inv" to="/$(arg robot_ns)/torque_allocation_matrix_inv"/>
+
+    <remap from="/$(arg robot_ns)/assemble/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
+    <remap from="/$(arg robot_ns)/male/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
+    <remap from="/$(arg robot_ns)/female/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
     
-    <remap from="assemble/uav_info" to="/$(arg robot_ns)/uav_info" />
-    <remap from="male/uav_info" to="/$(arg robot_ns)/uav_info" />
-    <remap from="female/uav_info" to="/$(arg robot_ns)/uav_info" />
+    <remap from="/$(arg robot_ns)/assemble/uav_info" to="/$(arg robot_ns)/uav_info" />
+    <remap from="/$(arg robot_ns)/male/uav_info" to="/$(arg robot_ns)/uav_info" />
+    <remap from="/$(arg robot_ns)/female/uav_info" to="/$(arg robot_ns)/uav_info" />
   </node>
 
   ###########  Robot Model  ###########

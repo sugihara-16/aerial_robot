@@ -8,10 +8,13 @@
   <arg name="rviz_init_pose" />
   <arg name="rviz_config" />
   <arg name="initial_assemble" />
+  <arg name="airframe"/>    
   <group ns="$(arg robot_ns)">
     <!-- set robot_description to rosparameter server -->
     <!--initial state -->
     <param name="initial_assemble" value="$(arg initial_assemble)"/>
+    <!--airframe-->
+    <param name="airframe" value="$(arg airframe)"/>
     <!-- normal state -->
     <param name="robot_description" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- assemble state -->

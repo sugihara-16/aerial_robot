@@ -79,7 +79,7 @@
       <!-- visual & collisiont -->
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.0000"/>
+        <mass value="0.0052"/>
         <inertia
             ixx="0.00000807" ixy="0.0" ixz="0.0"
             iyy="0.00000807" iyz="0.0"
@@ -135,12 +135,12 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <mass value = "1.01367590" />
-      <origin xyz="0.02 0.0 0.02" rpy="0 0 0"/>
+      <mass value = "0.99287590" />
+      <origin xyz="0.0209037 -0.00157892 0.00576541" rpy="0 0 0"/>
     <inertia
-        ixx="0.00642994" ixy="0.00003030" ixz="-0.00081536"
-        iyy="0.00964036" iyz="-0.00002604"
-        izz="0.01352704"/>
+        ixx="0.00608728" ixy="0.00003070" ixz="-0.00079536"
+        iyy="0.00932989" iyz="-0.00002784"
+        izz="0.01298518"/>
     </inertial>
 
     <visual>

@@ -5,10 +5,18 @@ motor_info:
   force_landing_thrust: 1.1 #[N]
   m_f_rate: -0.011
   pwm_conversion_mode: 0 # SQRT Mode
-  vel_ref_num: 4
+  vel_ref_num: 2
   ref1:
-    voltage: 16
-    max_thrust: 12 # N
-    polynominal2: 0.027952492 # 0.0027952492 # x10
-    polynominal1: -1.450135122 # -0.1450135122 # x10
-    polynominal0: 0.7839164615 # 0.7839164615 # x1
+    voltage: 11
+    max_thrust: 8 # N
+    polynominal2: 0.016997207 # 0.0016997207 # x10
+    polynominal1: -0.715646031 # -0.0715646031 # x10
+    polynominal0: -1.5748406196 # -1.5748406196 # x1
+
+  ref2:
+    voltage: 12
+    max_thrust: 9 # N
+    polynominal2:  0.016041006 # 0.0016041006 # x10 
+    polynominal1: -0.334605432 # -0.0334605432 # x10
+    polynominal0: -3.4646704800 # -3.4646704800 # x1
+  

@@ -122,7 +122,7 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <mass value = "0.9251" />
+      <mass value = "0.8751" />
       <origin xyz="0.007 0.0 0.02 " rpy="0 0 0"/>
       <inertia
           ixx="0.00621238" ixy="-0.00001138" ixz="-0.00041267"
@@ -157,10 +157,10 @@
   </xacro:extra_module>
 
   <!-- propellers -->
-  <xacro:propeller_module id = "1" x = "-0.1044" y = "-0.12014" z = "0.05402" pich = "${-opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" />
-  <xacro:propeller_module id = "2" x = "0.10705" y = "-0.10827" z = "0.05946" pich = "${-opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" />
-  <xacro:propeller_module id = "3" x = "0.10705" y = "0.10827" z = "0.05402"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
-  <xacro:propeller_module id = "4" x = "-0.10705" y = "0.12014" z = "0.05404"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
+  <xacro:propeller_module id = "1" x = "-0.10754" y = "-0.12284" z = "0.05287" pich = "${-opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" />
+  <xacro:propeller_module id = "2" x = "0.10610" y = "-0.10682" z = "0.05662" pich = "${-opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" />
+  <xacro:propeller_module id = "3" x = "0.10618" y = "0.10708" z = "0.05674"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
+  <xacro:propeller_module id = "4" x = "-0.10744" y = "0.12274" z = "0.05289"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
 
 
 </robot>

@@ -14,8 +14,9 @@
   <arg name="spawn_y" default="0.0"/>
   <arg name="spawn_z" default="0.0"/>
   <arg name="spawn_yaw" default="0.0"/>
-  <arg name="robot_id" default="1" /> # please allocate id=1 to male and id = 2 to female
   <arg name="airframe" default="male" />
+  <arg name="robot_id" default="1" if="$(eval airframe=='male')"/>
+  <arg name="robot_id" default="2" if="$(eval airframe=='female')"/>
   <arg name="fully_actuated" default="false" />
   <arg name="female" default="false" />
   <arg name="robot_ns" value="assemble_quadrotors$(arg robot_id)" />
@@ -45,12 +46,7 @@
     <rosparam file="$(arg config_dir)/Battery.yaml" command="load" />
 
     ###########  Control  ###########
-    # TODO: modification to switch controller
     <rosparam file="$(arg config_dir)/AssembleControl.yaml" command="load"/>
-
-    <!-- <rosparam file="$(arg config_dir)/FlightControlUnderActuated_tilt_male.yaml" command="load"  if="$(eval airframe == 'male')"/> -->
-    <!-- <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"/> -->
-    <!-- <rosparam file="$(arg config_dir)/FlightControlUnderActuated.yaml" command="load"/> -->
 
     ###########  Sensor Fusion  ###########
     <rosparam file="$(arg config_dir)/StateEstimation.yaml" command="load" />
@@ -68,12 +64,12 @@
     <param name="param_verbose" value="false"/>
     <param name="main_rate" value="40"/>
     <param name="airframe" value="$(arg airframe)"/>
-
+    # remapping topic names
     <remap from="/$(arg robot_ns)/assemble/motor_info" to="/$(arg robot_ns)/motor_info" />
     <remap from="/$(arg robot_ns)/male/motor_info" to="/$(arg robot_ns)/motor_info" />
     <remap from="/$(arg robot_ns)/female/motor_info" to="/$(arg robot_ns)/motor_info" />
     <remap from="/$(arg robot_ns)/neutral/motor_info" to="/$(arg robot_ns)/motor_info" />
-    
+
     <remap from="/$(arg robot_ns)/assemble/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
     <remap from="/$(arg robot_ns)/male/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
     <remap from="/$(arg robot_ns)/female/four_axes/command" to="/$(arg robot_ns)/four_axes/command" />
@@ -92,7 +88,7 @@
     <remap from="/$(arg robot_ns)/male/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
     <remap from="/$(arg robot_ns)/female/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
     <remap from="/$(arg robot_ns)/neutral/rpy/gain" to="/$(arg robot_ns)/rpy/gain" />
-    
+
     <remap from="/$(arg robot_ns)/assemble/uav_info" to="/$(arg robot_ns)/uav_info" />
     <remap from="/$(arg robot_ns)/male/uav_info" to="/$(arg robot_ns)/uav_info" />
     <remap from="/$(arg robot_ns)/female/uav_info" to="/$(arg robot_ns)/uav_info" />
@@ -105,12 +101,12 @@
 
     <remap from="/$(arg robot_ns)/assemble/debug/wrench_allocation_matrix" to="/$(arg robot_ns)/debug/wrench_allocation_matrix" />
     <remap from="/$(arg robot_ns)/male/debug/wrench_allocation_matrix" to="/$(arg robot_ns)/debug/wrench_allocation_matrix" />
-    <remap from="/$(arg robot_ns)/female/debug/wrench_allocation_matrix" to="/$(arg robot_ns)/debug/wrench_allocation_matrix" />
+    <remap from="/$(arg robot_ns)/female/debug/wrench_allocation_matrix" to="/$(arg robot_ns)/debug/wprench_allocation_matrix" />
     <remap from="/$(arg robot_ns)/neutral/debug/wrench_allocation_matrix" to="/$(arg robot_ns)/debug/wrench_allocation_matrix" />
 
     <remap from="/$(arg robot_ns)/assemble/debug/wrench_allocation_matrix_inv" to="/$(arg robot_ns)/debug/wrench_allocation_matrix_inv" />
     <remap from="/$(arg robot_ns)/male/debug/wrench_allocation_matrix_inv" to="/$(arg robot_ns)/debug/wrench_allocation_matrix_inv" />
-    <remap from="/$(arg robot_ns)/female/debug/wrench_allocation_matrix_inv" to="/$(arg robot_ns)/debug/wrench_allocation_matrix_inv" />
+    <remap from="/$(arg robot_ns)/female/debug/wrenpch_allocation_matrix_inv" to="/$(arg robot_ns)/debug/wrench_allocation_matrix_inv" />
     <remap from="/$(arg robot_ns)/neutral/debug/wrench_allocation_matrix_inv" to="/$(arg robot_ns)/debug/wrench_allocation_matrix_inv" />
 
     <remap from="/$(arg robot_ns)/assemble/debug/four_axes/gain" to="/$(arg robot_ns)/debug/four_axes/gain" />
@@ -127,7 +123,8 @@
     <arg name="headless" value="$(arg headless)" />
 
     <!-- assemble and dessemble model for switching function -->
-    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole.$(arg description_mode).xacro"/>
+    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
+    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_neutral.$(arg description_mode).xacro" if="$(eval airframe == 'neutral')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
@@ -137,7 +134,7 @@
     <arg name="rviz_config" value="$(find assemble_quadrotors)/config/rviz_config_$(arg robot_id)" />
     <arg name="rviz_init_pose" value="$(arg config_dir)/RvizInit.yaml" />
     <arg name="need_joint_state" value="false" if ="$(eval arg('simulation') or arg('real_machine'))"/>
-    <arg name="airframe" value="$(arg airframe)"/>    
+    <arg name="airframe" value="$(arg airframe)"/>
     <arg name="initial_assemble" value="$(arg initial_assemble)"/>
   </include>
 
@@ -146,7 +143,7 @@
     <arg name="real_machine" value="$(arg real_machine)" />
     <arg name="simulation" value="$(arg simulation)" />
     <arg name="robot_ns" value="$(arg robot_ns)" />
-    <arg name="robot_id" value="$(arg robot_id)" />    
+    <arg name="robot_id" value="$(arg robot_id)" />
   </include >
   <include file="$(find assemble_quadrotors)/launch/includes/docking_mechanism.launch" >
     <arg name="real_machine" value="$(arg real_machine)" />

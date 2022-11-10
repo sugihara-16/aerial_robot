@@ -440,19 +440,19 @@ void AttitudeController::fourAxisCommandCallback( const spinal::FourAxisCommand 
     }
 
   /* check the number of motor which should be equal to the ros thrust */
-#ifdef SIMULATION
-  if(cmd_msg.base_thrust.size() != motor_number_)
-    {
-      ROS_ERROR("fource axis commnd: motor number is not identical between fc and pc");
-      return;
-    }
-#else
-  if(cmd_msg.base_thrust_length != motor_number_)
-    {
-      nh_->logerror("fource axis commnd: motor number is not identical between fc and pc");
-      return;
-    }
-#endif
+// #ifdef SIMULATION
+//   if(cmd_msg.base_thrust.size() != motor_number_)
+//     {
+//       ROS_ERROR("fource axis commnd: motor number is not identical between fc and pc");
+//       return;
+//     }
+// #else
+//   if(cmd_msg.base_thrust_length != motor_number_)
+//     {
+//       nh_->logerror("fource axis commnd: motor number is not identical between fc and pc");
+//       return;
+//     }
+// #endif
 
   if(force_landing_flag_)
     {
@@ -532,19 +532,19 @@ void AttitudeController::rpyGainCallback( const spinal::RollPitchYawTerms &gain_
   if(motor_number_ == 0) return; //not be activated
 
   /* check the number of motor which should be equal to the ros thrust */
-#ifdef SIMULATION
-  if(gain_msg.motors.size() != motor_number_ && gain_msg.motors.size() != 1)
-    {
-      ROS_ERROR("rpy gain: motor number is not identical between fc:%d and pc:%d", motor_number_, (int)gain_msg.motors.size());
-      return;
-    }
-#else
-  if(gain_msg.motors_length != motor_number_ && gain_msg.motors_length != 1)
-    {
-      nh_->logerror("rpy gain: motor number is not identical between fc and pc");
-      return;
-    }
-#endif
+// #ifdef SIMULATION
+//   if(gain_msg.motors.size() != motor_number_ && gain_msg.motors.size() != 1)
+//     {
+//       ROS_ERROR("rpy gain: motor number is not identical between fc:%d and pc:%d", motor_number_, (int)gain_msg.motors.size());
+//       return;
+//     }
+// #else
+//   if(gain_msg.motors_length != motor_number_ && gain_msg.motors_length != 1)
+//     {
+//       nh_->logerror("rpy gain: motor number is not identical between fc and pc");
+//       return;
+//     }
+// #endif
 
 #ifndef SIMULATION
   /* mutex to protect the completion of following update  */
@@ -592,19 +592,19 @@ void AttitudeController::torqueAllocationMatrixInvCallback(const spinal::TorqueA
 {
   if(motor_number_ == 0) return;
 
-#ifdef SIMULATION
-  if(msg.rows.size() != motor_number_)
-    {
-      ROS_ERROR("torqueAllocationMatrixInvCallback: motor number is not identical between fc(%d) and pc(%ld)", motor_number_, msg.rows.size());
-      return;
-    }
-#else
-  if(msg.rows_length != motor_number_)
-    {
-      nh_->logerror("torqueAllocationMatrixInvCallback: motor number is not identical between fc and pc");
-      return;
-    }
-#endif
+// #ifdef SIMULATION
+//   if(msg.rows.size() != motor_number_)
+//     {
+//       ROS_ERROR("torqueAllocationMatrixInvCallback: motor number is not identical between fc(%d) and pc(%ld)", motor_number_, msg.rows.size());
+//       return;
+//     }
+// #else
+//   if(msg.rows_length != motor_number_)
+//     {
+//       nh_->logerror("torqueAllocationMatrixInvCallback: motor number is not identical between fc and pc");
+//       return;
+//     }
+// #endif
 
 #ifndef SIMULATION
   /* mutex to protect the completion of following update  */
@@ -722,19 +722,19 @@ void AttitudeController::pMatrixInertiaCallback(const spinal::PMatrixPseudoInver
 {
   if(motor_number_ == 0) return;
 
-#ifdef SIMULATION
-  if(msg.pseudo_inverse.size() != motor_number_)
-    {
-      if(motor_number_ > 0) ROS_ERROR("p matrix pseudo inverse and inertia commnd: motor number is not identical between fc and pc");
-      return;
-    }
-#else
-  if(msg.pseudo_inverse_length != motor_number_)
-    {
-      nh_->logerror("p matrix pseudo inverse and inertia commnd: motor number is not identical between fc and pc");
-      return;
-    }
-#endif
+// #ifdef SIMULATION
+//   if(msg.pseudo_inverse.size() != motor_number_)
+//     {
+//       if(motor_number_ > 0) ROS_ERROR("p matrix pseudo inverse and inertia commnd: motor number is not identical between fc and pc");
+//       return;
+//     }
+// #else
+//   if(msg.pseudo_inverse_length != motor_number_)
+//     {
+//       nh_->logerror("p matrix pseudo inverse and inertia commnd: motor number is not identical between fc and pc");
+//       return;
+//     }
+// #endif
 
 #ifndef SIMULATION
   /* mutex to protect the completion of following update  */

@@ -5,7 +5,7 @@
 
   <node pkg="mocap_optitrack"
     type="mocap_node"
-    name="mocap_node"
+    name="$(arg robot_ns)_mocap_node"
     respawn="false"
     launch-prefix=""
     required="true">

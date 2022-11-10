@@ -10,6 +10,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
                                     double ctrl_loop_rate)
 {
   assemble_robot_model_ = boost::dynamic_pointer_cast<AssembleTiltedRobotModel>(robot_model);
+  navigator_ = navigator;
 
   nh.param("airframe", airframe_, std::string("male"));
   nh.param("initial_assemble", current_assemble_, false);
@@ -30,9 +31,9 @@ void AssembleController::initialize(ros::NodeHandle nh,
   current_assemble_ = assemble_robot_model_->isAssemble();
 
   assemble_robot_model_->assemble(); //switching robot model
-  assemble_mode_controller_->initialize(assemble_nh_, nhp, assemble_robot_model_, estimator, navigator, ctrl_loop_rate);
+  assemble_mode_controller_->initialize(assemble_nh_, nhp, assemble_robot_model_, estimator, navigator_, ctrl_loop_rate);
   assemble_robot_model_->dessemble(); //switching robot model
-  dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator, ctrl_loop_rate);
+  dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator_, ctrl_loop_rate);
   dessemble_mode_controller_->optimalGain(); // calculate LQI gain for once
 
 
@@ -76,7 +77,7 @@ void AssembleController::sendCmd(){
   if(assemble_robot_model_->isAssemble()){
     assemble_mode_controller_->PoseLinearController::sendCmd();
     spinal::FourAxisCommand flight_command_data;
-    flight_command_data.angles[0] = navigator_->getTargetRPY().x();
+    flight_command_data.angles[0] = navigator_->getTargetRPY().x(); //probrem
     flight_command_data.angles[1] = navigator_->getTargetRPY().y();
     flight_command_data.angles[2] = assemble_mode_controller_->getCandidateYawTerm() ;
     // choose correct 4 elements

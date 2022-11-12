@@ -86,7 +86,7 @@ void AssembleController::sendCmd(){
       std::vector<float> target_base_thrust {all_target_base_thrust.begin(), all_target_base_thrust.begin()+4};
       flight_command_data.base_thrust = target_base_thrust;
     }else{
-      std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 5, all_target_base_thrust.begin()+8};
+      std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 4, all_target_base_thrust.begin()+8};
       flight_command_data.base_thrust = target_base_thrust;
     }
     flight_cmd_pub_.publish(flight_command_data);

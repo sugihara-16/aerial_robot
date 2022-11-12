@@ -15,27 +15,15 @@
           <arg name="serial_port" value="/dev/flight_controller" />
           <arg name="serial_baud" value="921600" />
         </include>
+        <!-- mocap -->
+        <include file="$(find aerial_robot_base)/launch/external_module/mocap.launch" />
       </group>
     </group>
-  </group>
+
 
     <!-- basic configuration for sensors (e.g. noise sigma) -->
     <rosparam file="$(find hydrus)/config/sensors/imu/spinal.yaml" command="load" />
     <rosparam file="$(find aerial_robot_base)/config/sensors/gps/ublox_m8n.yaml" command="load" />
     <rosparam file="$(find aerial_robot_base)/config/sensors/mocap.yaml" command="load" />
-  <group if="$(arg real_machine)">
-    <!-- mocap -->
-    <!-- <include file="$(find assemble_quadrotors)/launch/includes/external_module/assemble_mocap.launch"> -->
-    <include file="$(find aerial_robot_base)/launch/includes/external_module/mocap.launch">
-      <!-- <arg name="robot_ns" value="$(arg robot_ns)"/> -->
-      <!-- <arg name="robot_id" value="$(arg robot_id)"/> -->
-    </include>
-
-    <!-- mocap_sub name parameters for airframe switching -->
-    <!-- <param name = "assemble_mocap_sub_name" value = "assemble/mocap/pose" /> -->
-    <param name = "assemble_mocap_sub_name" value = "$(arg robot_ns)/mocap/pose" />
-    <param name = "unit_mocap_sub_name" value = "$(arg robot_ns)/mocap/pose" />
-
   </group>
-
 </launch>

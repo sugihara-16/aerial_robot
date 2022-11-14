@@ -37,6 +37,7 @@
     # Drone = 0
     <param name="uav_model" value= "0" />
     <rosparam file="$(arg config_dir)/AssembleRobotModel.yaml" command="load"/>
+    <!-- <rosparam file="$(arg config_dir)/RobotModelFullyActuated.yaml" command="load"/> -->
 
     ###########  Motor Config  ###########
     <!-- <rosparam file="$(arg config_dir)/MotorInfo_5inch.yaml" command="load" /> -->
@@ -47,6 +48,7 @@
 
     ###########  Control  ###########
     <rosparam file="$(arg config_dir)/AssembleControl.yaml" command="load"/>
+    <!-- <rosparam file="$(arg config_dir)/FlightControlFullyActuated.yaml" command="load"/> -->
 
     ###########  Sensor Fusion  ###########
     <rosparam file="$(arg config_dir)/StateEstimation.yaml" command="load" />

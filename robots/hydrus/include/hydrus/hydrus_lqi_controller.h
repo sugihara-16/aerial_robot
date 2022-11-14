@@ -64,6 +64,15 @@ namespace aerial_robot_control
 
     const Eigen::MatrixXd& getPMatrix() const { return p_mat_; }
     Eigen::MatrixXd getPMatrixPseudoInv() const { return p_mat_pseudo_inv_; }
+    std::vector<float> getTargetBaseThrust() { return target_base_thrust_; }
+    double getCandidateYawTerm() { return candidate_yaw_term_; }
+    double getTargetRoll() { return target_roll_; }
+    double getTargetPitch() { return target_pitch_; }
+    virtual void controlCore() override;
+    virtual void sendCmd() override;
+
+    virtual bool optimalGain();
+    virtual void publishGain();
 
   protected:
 
@@ -98,13 +107,8 @@ namespace aerial_robot_control
     bool checkRobotModel();
 
     virtual void rosParamInit();
-    virtual void controlCore() override;
 
-    virtual bool optimalGain();
     virtual void clampGain();
-    virtual void publishGain();
-
-    virtual void sendCmd() override;
     virtual void sendFourAxisCommand();
 
     virtual void allocateYawTerm();

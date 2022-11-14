@@ -18,7 +18,7 @@
    ```
    $ roslaunch motor_test test.launch
    ```
-   
+
    **parameter**:
    - `test_mode`: the test mode. Step mode (:=0) is to give continous steps command to the ESC, the problem is the bias of the force sensor increases during the steps commands. Thus, we recommand to use **one-shot** mode (:=1, default mode), which iteratively gives an increasing PWM value. The difference is this mode stops the motor rotation after each step, and re-calibrate the force sensor before the next step. So the bias of force sensor can be considered to be zero.
    - `run_duration`: the duration of motor rotation during each step.

@@ -2,7 +2,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2020, JSK Lab
+ *  Copyright (c) 2022, JSK Lab
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -53,6 +53,13 @@ public:
   void dessemble();
 
 private:
+
   bool assemble_mode_;
   bool dessemble_mode_;
+  bool initial_assemble_;
+
+  // private functions
+  void getParamFromRos();
+  void initializeRotorNum(){ rotor_num_=0; }
+  void initializeRviz(const std::string);
 };

@@ -10,19 +10,7 @@
 
   <!-- kinematics [m] -->
 
-  <!-- <xacro:property name="pos_bound" value="${0.22628}" /> -->
-  <!-- <xacro:property name="center_dis" value="${0.393}" /> -->
-  <!-- <xacro:property name="rotor_z" value="${0.05}" /> -->
-  <!-- <xacro:property name="opt_pich_1" value="${0.523525}" /> -->
-  <!-- <xacro:property name="opt_yaw_1" value="${0.73108}" /> -->
-  <!-- <xacro:property name="opt_pich_2" value="${0.523535}" /> -->
-  <!-- <xacro:property name="opt_yaw_2" value="${-2.08113}" /> -->
-  <!-- <xacro:property name="opt_pich_3" value="${0.523595}" /> -->
-  <!-- <xacro:property name="opt_yaw_3" value="${2.4662}" /> -->
-  <!-- <xacro:property name="opt_pich_4" value="${0.348489}" /> -->
-  <!-- <xacro:property name="opt_yaw_4" value="${-0.673131}" /> -->
-
-    <xacro:property name="pos_bound" value="${0.22628}" />
+  <xacro:property name="pos_bound" value="${0.22628}" />
   <xacro:property name="center_dis" value="${0.393}" />
   <xacro:property name="rotor_z" value="${0.052}" />
   <xacro:property name="opt_pich_1" value="${0.45}" />
@@ -79,7 +67,7 @@
       <!-- visual & collisiont -->
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.0091"/>
+        <mass value="0.0052"/>
         <inertia
             ixx="0.00000807" ixy="0.0" ixz="0.0"
             iyy="0.00000807" iyz="0.0"
@@ -135,18 +123,18 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <mass value = "0.78550624" />
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value = "0.94287590" />
+      <origin xyz="0.0209037 -0.00157892 0.00576541" rpy="0 0 0"/>
     <inertia
-        ixx="0.005554124" ixy="0.00002714" ixz="-0.00046661"
-        iyy="0.00758289" iyz="-0.00001400"
-        izz="0.011148881"/>
+        ixx="0.00608728" ixy="0.00003070" ixz="-0.00079536"
+        iyy="0.00932989" iyz="-0.00002784"
+        izz="0.01298518"/>
     </inertial>
 
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_dual_quadrotors_v3_male.STL"/>
+        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_quadrotor_male_v5.STL"/>
       </geometry>
     </visual>
     <collision>
@@ -171,14 +159,10 @@
   </xacro:extra_module>
 
   <!-- propellers -->
-  <!-- <xacro:propeller_module id = "1" x = "${-pos_bound/2}" y = "${-pos_bound/2}" z = "${rotor_z}" pich = "${opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" /> -->
-  <!-- <xacro:propeller_module id = "2" x = "${pos_bound/2}" y = "${-pos_bound/2}" z = "${rotor_z}" pich = "${opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" /> -->
-  <!-- <xacro:propeller_module id = "3" x = "${pos_bound/2}" y = "${pos_bound/2}" z = "${rotor_z}"  pich = "${opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" /> -->
-  <!-- <xacro:propeller_module id = "4" x = "${-pos_bound/2}" y = "${pos_bound/2}" z = "${rotor_z}"  pich = "${opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" /> -->
-    <xacro:propeller_module id = "1" x = "-0.1044" y = "-0.12014" z = "0.05402" pich = "${-opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" />
-  <xacro:propeller_module id = "2" x = "0.10705" y = "-0.10827" z = "0.05946" pich = "${-opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" />
-  <xacro:propeller_module id = "3" x = "0.10705" y = "0.10827" z = "0.05402"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
-  <xacro:propeller_module id = "4" x = "-0.10705" y = "0.12014" z = "0.05404"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
+  <xacro:propeller_module id = "1" x = "-0.10754" y = "-0.12284" z = "0.05287" pich = "${-opt_pich_3}" yaw = "${opt_yaw_3}" direction = "1" />
+  <xacro:propeller_module id = "2" x = "0.10610" y = "-0.10682" z = "0.05662" pich = "${-opt_pich_4}" yaw = "${opt_yaw_4}"  direction = "-1" />
+  <xacro:propeller_module id = "3" x = "0.10618" y = "0.10708" z = "0.05674"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
+  <xacro:propeller_module id = "4" x = "-0.10744" y = "0.12274" z = "0.05289"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
 
 
 

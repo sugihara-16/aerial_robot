@@ -1,31 +1,29 @@
 <launch>
   <arg name="headless" default="false" />
-  <arg name="need_joint_state" default="true"/>
+  <arg name="need_joint_state" default="false"/>
   <arg name="model_options" default=""/>
-  <arg name="robot_model" />
   <arg name="assemble_robot_model" />
   <arg name="dessemble_robot_model" />
   <arg name="robot_ns" />
   <arg name="rviz_init_pose" />
   <arg name="rviz_config" />
-
+  <arg name="initial_assemble" />
+  <arg name="airframe"/>    
   <group ns="$(arg robot_ns)">
     <!-- set robot_description to rosparameter server -->
+    <!--initial state -->
+    <param name="initial_assemble" value="$(arg initial_assemble)"/>
+    <!--airframe-->
+    <param name="airframe" value="$(arg airframe)"/>
     <!-- normal state -->
-    <param name="robot_description" command="$(find xacro)/xacro.py '$(arg robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
+    <param name="robot_description" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- assemble state -->
-    <param name="assemble_robot" command="$(find xacro)/xacro.py '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
+    <param name="assemble_robot" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- dessemble state -->
-    <param name="dessemble_robot" command="$(find xacro)/xacro.py '$(arg dessemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
-
-    <!-- joint state publisher if necessary -->
-    <rosparam file ="$(arg rviz_init_pose)" command="load"/>
-    <node name="$(anon joint_state_publisher_gui)" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" if="$(arg need_joint_state)">
-      <param name="robot_description" command="$(find xacro)/xacro.py '$(arg robot_model)' $(arg model_options)" />
-    </node >
+    <param name="dessemble_robot" command="$(find xacro)/xacro '$(arg dessemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
 
     <!-- tf publisher from joint_state -->
-    <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="state_publisher">
+    <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="robot_state_publisher">
       <param name="tf_prefix" value="$(arg robot_ns)" />
     </node>
     <node name="$(anon rotor_tf_publisher)" pkg="aerial_robot_model" type="rotor_tf_publisher" unless="$(arg need_joint_state)">

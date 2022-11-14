@@ -59,11 +59,11 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        assemble_quadrotors/cog:
+        assemble_quadrotors1/cog:
           Value: true
-        assemble_quadrotors/fc:
+        assemble_quadrotors1/fc:
           Value: true
-        assemble_quadrotors/main_body:
+        assemble_quadrotors1/main_body:
           Value: true
         assemble_quadrotors1/root:
           Value: true

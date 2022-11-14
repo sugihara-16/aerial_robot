@@ -67,6 +67,8 @@ bool HydrusTiltedLQIController::optimalGain()
 {
   /* calculate the P_orig pseudo inverse */
   Eigen::MatrixXd P = robot_model_->calcWrenchMatrixOnCoG();
+  // ROS_ERROR_STREAM("P: " << P);
+  //std::cout << "P: " << P << std;;endl;
   Eigen::MatrixXd inertia = robot_model_->getInertia<Eigen::Matrix3d>();
   Eigen::MatrixXd P_dash  = inertia.inverse() * P.bottomRows(3); // roll, pitch, yaw
 
@@ -113,6 +115,10 @@ bool HydrusTiltedLQIController::optimalGain()
 
   // compensation for gyro moment
   p_mat_pseudo_inv_ = aerial_robot_model::pseudoinverse(P.middleRows(2, 4));
+
+  // clamp gain
+  clampGain();
+
   return true;
 }
 

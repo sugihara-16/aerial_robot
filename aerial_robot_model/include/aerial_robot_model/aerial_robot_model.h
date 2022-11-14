@@ -160,6 +160,7 @@ namespace aerial_robot_model {
 
     const void setFeasibleControlFMinThre(const double fc_f_min_thre)  { fc_f_min_thre_ = fc_f_min_thre;}
     const void setFeasibleControlTMinThre(const double fc_t_min_thre)  { fc_t_min_thre_ = fc_t_min_thre;}
+    const void setUrdfModel(const urdf::Model& model){model_ = model; }
 
     virtual bool stabilityCheck(bool verbose = true);
 
@@ -187,8 +188,6 @@ namespace aerial_robot_model {
     std::map<std::string, std::vector<std::string> > joint_segment_map_;
     std::map<std::string, int> joint_hierachy_;
     std::map<std::string, KDL::Frame> seg_tf_map_;
-    int joint_num_;
-    int rotor_num_;
     std::vector<KDL::Vector> rotors_origin_from_cog_;
     std::vector<KDL::Vector> rotors_normal_from_cog_;
     KDL::Tree tree_;
@@ -239,6 +238,10 @@ namespace aerial_robot_model {
 
   protected:
 
+    int joint_num_;
+    int rotor_num_;
+
+    //protected functions
     void kinematicsInit(std::string robot_description = std::string("robot_description"));
     void stabilityInit();
     void staticsInit(std::string robot_description = std::string("robot_description"));

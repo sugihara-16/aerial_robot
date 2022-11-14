@@ -61,14 +61,11 @@ namespace aerial_robot_control
     virtual void controlCore() override;
     virtual void sendCmd() override;
 
+    std::vector<float> getTargetBaseThrust() { return target_base_thrust_; }
+    double getCandidateYawTerm() { return candidate_yaw_term_; }
+    Eigen::MatrixXd getQMatInv() const { return q_mat_inv_;}
+
   private:
-    ros::Publisher flight_cmd_pub_; //for spinal
-    ros::Publisher rpy_gain_pub_; //for spinal
-    ros::Publisher torque_allocation_matrix_inv_pub_; //for spinal
-    double torque_allocation_matrix_inv_pub_stamp_;
-    ros::Publisher wrench_allocation_matrix_pub_; //for debug
-    ros::Publisher wrench_allocation_matrix_inv_pub_; //for debug
-    double wrench_allocation_matrix_pub_stamp_;
 
     Eigen::MatrixXd q_mat_;
     Eigen::MatrixXd q_mat_inv_;
@@ -76,14 +73,23 @@ namespace aerial_robot_control
     std::vector<float> target_base_thrust_;
     double candidate_yaw_term_;
 
-    double torque_allocation_matrix_inv_pub_interval_;
-    double wrench_allocation_matrix_pub_interval_;
-
     void setAttitudeGains();
-    void rosParamInit();
 
     void sendFourAxisCommand();
     void sendTorqueAllocationMatrixInv();
+
+  protected:
+    ros::Publisher rpy_gain_pub_; //for spinal
+    ros::Publisher torque_allocation_matrix_inv_pub_; //for spinal
+    double torque_allocation_matrix_inv_pub_stamp_;
+    ros::Publisher wrench_allocation_matrix_pub_; //for debug
+    ros::Publisher wrench_allocation_matrix_inv_pub_; //for debug
+    double wrench_allocation_matrix_pub_stamp_;
+
+    ros::Publisher flight_cmd_pub_; //for spinal
+    double torque_allocation_matrix_inv_pub_interval_;
+    double wrench_allocation_matrix_pub_interval_;
+    void rosParamInit();
 
 
   };

@@ -1,0 +1,210 @@
+aerial_robot_control_name: aerial_robot_control/assemble_controller
+
+assemble:
+  controller:
+    torque_allocation_matrix_inv_pub_interval: 0.05
+    wrench_allocation_matrix_pub_interval: 0.1
+
+    xy:
+      p_gain: 12.0
+      i_gain: 0.05
+      d_gain: 8.0
+      limit_sum: 4.0
+      limit_p: 12.0
+      limit_i: 12.0
+      limit_d: 12.0
+
+    z:
+      p_gain: 5.0
+      i_gain: 1.0
+      d_gain: 2.5
+      limit_err_p: 1.0
+      limit_sum: 25.0 # N for clamping thrust force
+      limit_p: 25.0
+      limit_i: 25.0
+      limit_d: 25.0
+      force_landing_descending_rate: -0.5
+
+    roll_pitch:
+      p_gain: 25.0
+      i_gain: 1.0
+      d_gain: 10.0
+      limit_sum: 20.0
+      limit_p: 20.0
+      limit_i: 20.0
+      limit_d: 20.0
+
+      start_rp_integration_height: 0.01
+
+    yaw:
+      p_gain: 15.0
+      i_gain: 1.0
+      d_gain: 10.0
+      limit_err_p: 0.4
+      limit_sum: 20.0
+      limit_p: 20.0
+      limit_i: 20.0
+      limit_d: 20.0
+
+      need_d_control: false
+
+
+male:
+  controller:
+    xy:
+      p_gain: 12
+      i_gain: 0.1
+      d_gain: 4.0
+      limit_sum: 3
+      limit_p: 3
+      limit_i: 1.5
+      limit_d: 3
+
+    z:
+      p_gain: 12.0
+      i_gain: 2.0
+      d_gain: 2.0
+      limit_err_p: 1.0
+      limit_sum: 160 # N for clamping thrust force
+      limit_p: 160 # m / s^2
+      limit_i: 160 # m / s^2
+      limit_d: 160 # m / s^2
+      landing_err_z: -0.55
+      force_landing_descending_rate: -0.6
+
+    yaw:
+      limit_sum: 6.0 # N for clamping thrust force
+      limit_p: 4.0
+      limit_i: 4.0
+      limit_d: 4.0
+      limit_err_p: 0.4
+      need_d_control: false
+
+    # LQI gain generator
+    lqi:
+      gain_generate_rate: 0.0
+      gyro_moment_compensation: true
+      clamp_gain: true
+
+      roll_pitch_p: 400
+      roll_pitch_i: 2
+      roll_pitch_d: 1.0
+
+      yaw_p: 250
+      yaw_i: 0.5
+      yaw_d: 50
+
+      r1: 1.0
+      r2: 1.0
+      r3: 1.0
+      r4: 1.0
+
+      trans_constraint_weight: 100
+      att_control_weight: 1
+
+
+female:
+  controller:
+    xy:
+      p_gain: 12
+      i_gain: 0.1
+      d_gain: 6.0
+      limit_sum: 3
+      limit_p: 3
+      limit_i: 1.5
+      limit_d: 3
+
+    z:
+      p_gain: 6.0
+      i_gain: 2.0
+      d_gain: 2.5
+      limit_err_p: 1.0
+      limit_sum: 160 # N for clamping thrust force
+      limit_p: 160 # m / s^2
+      limit_i: 160 # m / s^2
+      limit_d: 160 # m / s^2
+      landing_err_z: -0.55
+      force_landing_descending_rate: -0.6
+
+    yaw:
+      limit_sum: 6.0 # N for clamping thrust force
+      limit_p: 4.0
+      limit_i: 4.0
+      limit_d: 4.0
+      limit_err_p: 0.4
+      need_d_control: false
+
+    # LQI gain generator
+    lqi:
+      gain_generate_rate: 0.0
+      gyro_moment_compensation: true
+      clamp_gain: true
+
+      roll_pitch_p: 300
+      roll_pitch_i: 2
+      roll_pitch_d: 1
+
+      yaw_p: 250
+      yaw_i: 0.5
+      yaw_d: 50
+
+      r1: 1.0
+      r2: 1.0
+      r3: 1.0
+      r4: 1.0
+
+      trans_constraint_weight: 100
+      att_control_weight: 1
+
+neutral:
+  controller:
+    xy:
+      p_gain: 10
+      i_gain: 0.1
+      d_gain: 8.0
+      limit_sum: 3
+      limit_p: 3
+      limit_i: 1.5
+      limit_d: 3
+
+    z:
+      p_gain: 6.0
+      i_gain: 2.0
+      d_gain: 2.5
+      limit_err_p: 1.0
+      limit_sum: 160 # N for clamping thrust force
+      limit_p: 160 # m / s^2
+      limit_i: 160 # m / s^2
+      limit_d: 160 # m / s^2
+      landing_err_z: -0.55
+      force_landing_descending_rate: -0.6
+
+    yaw:
+      limit_sum: 6.0 # N for clamping thrust force
+      limit_p: 4.0
+      limit_i: 4.0
+      limit_d: 4.0
+      limit_err_p: 0.4
+      need_d_control: false
+
+    # LQI gain generator
+    lqi:
+      gain_generate_rate: 0.0
+      gyro_moment_compensation: true
+      clamp_gain: true
+
+      roll_pitch_p: 400
+      roll_pitch_i: 2
+      roll_pitch_d: 1
+
+      yaw_p: 250
+      yaw_i: 0.5
+      yaw_d: 50
+
+      r1: 1.0
+      r2: 1.0
+      r3: 1.0
+      r4: 1.0
+
+      trans_constraint_weight: 100
+      att_control_weight: 1

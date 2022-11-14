@@ -82,30 +82,33 @@ void AssembleController::sendCmd(){
     flight_command_data.angles[2] = assemble_mode_controller_->getCandidateYawTerm() ;
     // choose correct 4 elements
     auto all_target_base_thrust = assemble_mode_controller_->getTargetBaseThrust(); // 8 elements
-    if(airframe_ == "male") {
-      std::vector<float> target_base_thrust {all_target_base_thrust.begin(), all_target_base_thrust.begin()+4};
-      flight_command_data.base_thrust = target_base_thrust;
-    }else{
-      std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 4, all_target_base_thrust.begin()+8};
-      flight_command_data.base_thrust = target_base_thrust;
-    }
+    // if(airframe_ == "male") {
+    //   std::vector<float> target_base_thrust {all_target_base_thrust.begin(), all_target_base_thrust.begin()+4};
+    //   flight_command_data.base_thrust = target_base_thrust;
+    // }else{
+    //   std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 4, all_target_base_thrust.begin()+8};
+    //   flight_command_data.base_thrust = target_base_thrust;
+    // }
+    // flight_cmd_pub_.publish(flight_command_data);
+    flight_command_data.base_thrust = all_target_base_thrust;
     flight_cmd_pub_.publish(flight_command_data);
 
     // send command for once
-    if (!send_once_flag_) return;
+    // if (!send_once_flag_) return;
 
     // send truncated P matrix
     // copy from  sendTorqueAllocationMatrixInv(); in fully_actuated_controller.cpp
     spinal::TorqueAllocationMatrixInv torque_allocation_matrix_inv_msg;
-    torque_allocation_matrix_inv_msg.rows.resize(4); //resize row of torque_allocation_matrix_inv to 4 for quadrotor
+    // torque_allocation_matrix_inv_msg.rows.resize(4); //resize row of torque_allocation_matrix_inv to 4 for quadrotor
+    torque_allocation_matrix_inv_msg.rows.resize(8);
     Eigen::MatrixXd torque_allocation_matrix_inv = assemble_mode_controller_->getQMatInv().rightCols(3);
     if (torque_allocation_matrix_inv.cwiseAbs().maxCoeff() > INT16_MAX * 0.001f)
       ROS_ERROR("Torque Allocation Matrix overflow");
 
     int offset = 0;
-    if (airframe_ == "female") offset = 4;
+    // if (airframe_ == "female") offset = 4;
 
-    for (unsigned int i = 0; i < 4; i++)
+    for (unsigned int i = 0; i < 8; i++)
       {
         torque_allocation_matrix_inv_msg.rows.at(i).x = torque_allocation_matrix_inv(i + offset ,0) * 1000;
         torque_allocation_matrix_inv_msg.rows.at(i).y = torque_allocation_matrix_inv(i + offset ,1) * 1000;
@@ -132,7 +135,7 @@ void AssembleController::sendCmd(){
     flight_cmd_pub_.publish(flight_command_data);
 
     // send command for once
-    if (!send_once_flag_) return;
+    // if (!send_once_flag_) return;
 
     // send LQI gain
     dessemble_mode_controller_->publishGain();

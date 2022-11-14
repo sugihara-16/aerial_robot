@@ -1,11 +1,10 @@
 <launch>
 
   <arg name="robot_id" default="1"/>
-  <arg name="robot_ns" default="assemble"/>
 
   <node pkg="mocap_optitrack"
     type="mocap_node"
-    name="$(arg robot_ns)_mocap_node"
+    name="mocap_node$(arg robot_id)"
     respawn="false"
     launch-prefix=""
     required="true">
@@ -21,7 +20,7 @@
          command_port: 1510
          data_port: 1511
     </rosparam>
-    <remap from="~/mocap/pose" to="$(arg robot_ns)/mocap/pose" />
+    <remap from="~mocap/pose" to="mocap/pose" />
   </node>
 
 </launch>

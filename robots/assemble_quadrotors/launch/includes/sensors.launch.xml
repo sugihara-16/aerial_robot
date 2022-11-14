@@ -16,7 +16,7 @@
           <arg name="serial_baud" value="921600" />
         </include>
         <!-- mocap -->
-        <include file="$(find aerial_robot_base)/launch/external_module/mocap.launch" >
+        <include file="$(find aerial_robot_base)/launch/includes/external_module/assemble_mocap.launch" >
           <arg name="robot_id" value="$(arg robot_id)" />
         </include>
       </group>

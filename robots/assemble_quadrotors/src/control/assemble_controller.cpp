@@ -21,6 +21,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
   desired_baselink_rot_pub_ = nh_.advertise<spinal::DesireCoord>("desire_coordinate", 1);
   flight_cmd_pub_ = nh_.advertise<spinal::FourAxisCommand>("four_axes/command", 1);
   torque_allocation_matrix_inv_pub_ = nh_.advertise<spinal::TorqueAllocationMatrixInv>("torque_allocation_matrix_inv", 1);
+  uav_info_pub_ = nh_.advertise<spinal::UavInfo>("uav_info", 10);
 
   ros::NodeHandle assemble_control_nh = ros::NodeHandle(nh_, "assemble/controller");
   assemble_control_nh.param("torque_allocation_matrix_inv_pub_interval", torque_allocation_matrix_inv_pub_interval_, 0.1);
@@ -35,6 +36,8 @@ void AssembleController::initialize(ros::NodeHandle nh,
   assemble_robot_model_->dessemble(); //switching robot model
   dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator_, ctrl_loop_rate);
   dessemble_mode_controller_->optimalGain(); // calculate LQI gain for once
+
+  send_once_flag_ = true;
 
 
   //adjust robot model for true state
@@ -53,24 +56,25 @@ void AssembleController::initialize(ros::NodeHandle nh,
 //override
 bool AssembleController::update(){
   if(assemble_robot_model_->isAssemble()){
+  //   if(navigator_->getNaviState() == aerial_robot_navigation::ARM_OFF_STATE) {
+  //     send_once_flag_ = true;
+  //   }
+  //   if(navigator_->getNaviState() == aerial_robot_navigation::ARM_ON_STATE) {
+  //     if(send_once_flag_)
+  //       {
+  //         ROS_ERROR("assemble uav info is published");
+  //         /* send motor and uav , about 10Hz */
+  //         spinal::UavInfo uav_info_msg;
+  //         uav_info_msg.motor_num = 4;
+  //         uav_info_msg.uav_model = 0;
+  //         uav_info_pub_.publish(uav_info_msg);
+
+  //         send_once_flag_ = false;
+  //       }
+  //   }
+
     if(!assemble_mode_controller_->ControlBase::update()) return false;
     assemble_mode_controller_->controlCore();
-
-    if(navigator_->getNaviState() == aerial_robot_navigation::ARM_OFF_STATE) {
-      send_once_flag_ = true;
-    }
-    if(navigator_->getNaviState() == aerial_robot_navigation::ARM_ON_STATE) {
-      if(send_once_flag_)
-        {
-          /* send motor and uav , about 10Hz */
-          spinal::UavInfo uav_info_msg;
-          uav_info_msg.motor_num = 4;
-          uav_info_msg.uav_model = uav_model_;
-          uav_info_pub_.publish(uav_info_msg);
-
-          send_once_flag_ = false;
-        }
-    }
 
     if(!current_assemble_) {
       current_assemble_ = true;

@@ -56,6 +56,22 @@ bool AssembleController::update(){
     if(!assemble_mode_controller_->ControlBase::update()) return false;
     assemble_mode_controller_->controlCore();
 
+    if(navigator_->getNaviState() == aerial_robot_navigation::ARM_OFF_STATE) {
+      once_flag_ = true;
+    }
+    if(navigator_->getNaviState() == aerial_robot_navigation::ARM_ON_STATE) {
+      if(once_flag_)
+        {
+          /* send motor and uav , about 10Hz */
+          spinal::UavInfo uav_info_msg;
+          uav_info_msg.motor_num = 4;
+          uav_info_msg.uav_model = uav_model_;
+          uav_info_pub_.publish(uav_info_msg);
+
+          once_flag_ = false;
+        }
+    }
+
     if(!current_assemble_) {
       send_once_flag_ = true;
       current_assemble_ = true;
@@ -68,8 +84,8 @@ bool AssembleController::update(){
       send_once_flag_ = true;
       current_assemble_ = false;
     }
-
   }
+
   sendCmd();
 }
 

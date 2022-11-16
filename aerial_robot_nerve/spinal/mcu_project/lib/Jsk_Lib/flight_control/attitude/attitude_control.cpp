@@ -673,6 +673,8 @@ void AttitudeController::setStartControlFlag(bool start_control_flag)
 
 void AttitudeController::setMotorNumber(uint8_t motor_number)
 {
+  //fixing motor number in 4 (for AssembleQuadrotors)
+  motor_number = 4;
   /* check the motor number which has spine system */
   if(motor_number_ > 0)
     {
@@ -688,7 +690,7 @@ void AttitudeController::setMotorNumber(uint8_t motor_number)
     }
   else
     {
-	  if(motor_number == 0) return;
+      if(motor_number == 0) return;
 
       size_t control_term_msg_size  = motor_number;
 

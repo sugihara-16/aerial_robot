@@ -47,7 +47,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
       assemble_robot_model_->dessemble();
     }
 
-  send_once_flag_ = true;
+
 }
 
 //override
@@ -57,10 +57,10 @@ bool AssembleController::update(){
     assemble_mode_controller_->controlCore();
 
     if(navigator_->getNaviState() == aerial_robot_navigation::ARM_OFF_STATE) {
-      once_flag_ = true;
+      send_once_flag_ = true;
     }
     if(navigator_->getNaviState() == aerial_robot_navigation::ARM_ON_STATE) {
-      if(once_flag_)
+      if(send_once_flag_)
         {
           /* send motor and uav , about 10Hz */
           spinal::UavInfo uav_info_msg;
@@ -68,12 +68,11 @@ bool AssembleController::update(){
           uav_info_msg.uav_model = uav_model_;
           uav_info_pub_.publish(uav_info_msg);
 
-          once_flag_ = false;
+          send_once_flag_ = false;
         }
     }
 
     if(!current_assemble_) {
-      send_once_flag_ = true;
       current_assemble_ = true;
     }
   }else{
@@ -81,7 +80,6 @@ bool AssembleController::update(){
     dessemble_mode_controller_->controlCore();
 
     if(current_assemble_) {
-      send_once_flag_ = true;
       current_assemble_ = false;
     }
   }
@@ -108,7 +106,6 @@ void AssembleController::sendCmd(){
     flight_cmd_pub_.publish(flight_command_data);
 
     // send command for once
-    // if (!send_once_flag_) return;
 
     // send truncated P matrix
     // copy from  sendTorqueAllocationMatrixInv(); in fully_actuated_controller.cpp
@@ -135,7 +132,6 @@ void AssembleController::sendCmd(){
     coord_msg.pitch = 0;
     desired_baselink_rot_pub_.publish(coord_msg);
 
-    send_once_flag_ = false;
   }
 
   else {
@@ -148,7 +144,6 @@ void AssembleController::sendCmd(){
     flight_cmd_pub_.publish(flight_command_data);
 
     // send command for once
-    // if (!send_once_flag_) return;
 
     // send LQI gain
     dessemble_mode_controller_->publishGain();
@@ -162,7 +157,6 @@ void AssembleController::sendCmd(){
     coord_msg.pitch = pitch;
     desired_baselink_rot_pub_.publish(coord_msg);
 
-    send_once_flag_ = false;
   }
 }
 

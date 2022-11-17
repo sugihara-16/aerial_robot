@@ -134,7 +134,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_quadrotor_male_v5.STL"/>
+        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_dual_quadrotors_male_v4.STL"/>
       </geometry>
     </visual>
     <collision>

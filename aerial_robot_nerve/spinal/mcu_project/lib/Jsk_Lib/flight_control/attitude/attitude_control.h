@@ -52,7 +52,7 @@
 #define MAX_MOTOR_NUMBER 10
 
 /* fail safe */
-#define FLIGHT_COMMAND_TIMEOUT 500 //500ms
+#define FLIGHT_COMMAND_TIMEOUT 10000 //500ms
 #define MAX_TILT_ANGLE 1.0f // rad
 
 #define CONTROL_TERM_PUB_INTERVAL 100

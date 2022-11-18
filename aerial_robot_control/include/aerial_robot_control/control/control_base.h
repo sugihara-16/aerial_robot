@@ -122,7 +122,7 @@ namespace aerial_robot_control
 
       if (control_timestamp_ < 0)
         {
-          if (navigator_->getNaviState() == aerial_robot_navigation::TAKEOFF_STATE)
+          if (navigator_->getNaviState() == aerial_robot_navigation::TAKEOFF_STATE || navigator_->getNaviState() == aerial_robot_navigation::HOVER_STATE)
             {
               reset();
               control_timestamp_ = ros::Time::now().toSec();

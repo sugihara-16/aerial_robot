@@ -144,6 +144,7 @@
     <arg name="simulation" value="$(arg simulation)" />
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="robot_id" value="$(arg robot_id)" />
+    <arg name="airframe" value="$(arg airframe)" />
   </include >
   <include file="$(find assemble_quadrotors)/launch/includes/docking_mechanism.launch" >
     <arg name="real_machine" value="$(arg real_machine)" />

@@ -53,21 +53,34 @@ void AssembleController::initialize(ros::NodeHandle nh,
 //override
 bool AssembleController::update(){
   if(assemble_robot_model_->isAssemble()){
-    if(!assemble_mode_controller_->ControlBase::update()) return false;
-    assemble_mode_controller_->controlCore();
-
     if(!current_assemble_) {
       send_once_flag_ = true;
       current_assemble_ = true;
+      // set new target pos in current mode
+      navigator_->setTargetXyFromCurrentState();
+      navigator_->setTargetZFromCurrentState();
+      navigator_->setTargetYawFromCurrentState();
+      // set current errI for gravity compensation
+      double current_ErrI = dessemble_mode_controller_->getCurrentZErrI();
+      assemble_mode_controller_->setCurrentZErrI(current_ErrI);
     }
+    if(!assemble_mode_controller_->ControlBase::update()) return false;
+    assemble_mode_controller_->controlCore();
   }else{
-    if(!dessemble_mode_controller_->ControlBase::update()) return false;
-    dessemble_mode_controller_->controlCore();
-
     if(current_assemble_) {
       send_once_flag_ = true;
       current_assemble_ = false;
+      // set new target pos in current mode
+      navigator_->setTargetXyFromCurrentState();
+      navigator_->setTargetZFromCurrentState();
+      navigator_->setTargetYawFromCurrentState();
+      // set current errI for gravity compensation
+      double current_ErrI = assemble_mode_controller_->getCurrentZErrI();
+      dessemble_mode_controller_->setCurrentZErrI(current_ErrI);
     }
+    if(!dessemble_mode_controller_->ControlBase::update()) return false;
+    dessemble_mode_controller_->controlCore();
+  }
 
   }
   sendCmd();

@@ -129,6 +129,8 @@ namespace aerial_robot_control
     void setErrP(const double err_p) { err_p_ = err_p; }
     void setErrI(const double err_i) { err_i_ = err_i; }
 
+    void setITerm(const double i_term) { i_term_ = i_term; }
+
     const double& getPTerm() const { return p_term_; }
     const double& getITerm() const { return i_term_; }
     const double& getDTerm() const { return d_term_; }

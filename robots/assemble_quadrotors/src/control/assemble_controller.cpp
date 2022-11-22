@@ -60,29 +60,41 @@ bool AssembleController::update(){
       current_assemble_ = true;
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();
-      navigator_->setTargetZFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
       // set current errI for gravity compensation
       double current_ErrI = dessemble_mode_controller_->getCurrentZErrI();
+      ROS_INFO("now z iterm is %f",current_ErrI);
       assemble_mode_controller_->setCurrentZErrI(current_ErrI);
     }
     if(!assemble_mode_controller_->ControlBase::update()) return false;
+    if(!current_assemble_) {
+      send_once_flag_ = true;
+      current_assemble_ = true;
+      // set new target pos in current mode
+      navigator_->setTargetXyFromCurrentState();
+      navigator_->setTargetYawFromCurrentState();
+      // set current errI and ITerm for gravity compensation
+      double current_ITerm = dessemble_mode_controller_->getCurrentZITerm();
+      assemble_mode_controller_->setCurrentZITerm(current_ITerm);
+      double current_ErrZ = dessemble_mode_controller_->getCurrentZErrI();
+      assemble_mode_controller_->setCurrentZErrI(current_ErrZ);
+    }
     assemble_mode_controller_->controlCore();
   }else{
+    if(!dessemble_mode_controller_->ControlBase::update()) return false;
     if(current_assemble_) {
       current_assemble_ = false;
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();
-      navigator_->setTargetZFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
       // set current errI for gravity compensation
-      double current_ErrI = assemble_mode_controller_->getCurrentZErrI();
-      dessemble_mode_controller_->setCurrentZErrI(current_ErrI);
+      double current_ITerm = assemble_mode_controller_->getCurrentZITerm();
+      dessemble_mode_controller_->setCurrentZITerm(current_ITerm);
+      double current_ErrZ = assemble_mode_controller_->getCurrentZErrI();
+      dessemble_mode_controller_->setCurrentZErrI(current_ErrZ);
     }
-    if(!dessemble_mode_controller_->ControlBase::update()) return false;
     dessemble_mode_controller_->controlCore();
   }
-
   sendCmd();
 }
 

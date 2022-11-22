@@ -72,8 +72,8 @@ bool AssembleController::update(){
       navigator_->setTargetXyFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
       // set current errI and ITerm for gravity compensation
-      double current_ITerm = dessemble_mode_controller_->getCurrentZITerm();
-      assemble_mode_controller_->setCurrentZITerm(current_ITerm);
+      // double current_ITerm = dessemble_mode_controller_->getCurrentZITerm();
+      // assemble_mode_controller_->setCurrentZITerm(current_ITerm);
       double current_ErrZ = dessemble_mode_controller_->getCurrentZErrI();
       assemble_mode_controller_->setCurrentZErrI(current_ErrZ);
     }
@@ -87,8 +87,8 @@ bool AssembleController::update(){
       navigator_->setTargetXyFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
       // set current errI for gravity compensation
-      double current_ITerm = assemble_mode_controller_->getCurrentZITerm();
-      dessemble_mode_controller_->setCurrentZITerm(current_ITerm);
+      // double current_ITerm = assemble_mode_controller_->getCurrentZITerm();
+      // dessemble_mode_controller_->setCurrentZITerm(current_ITerm);
       double current_ErrZ = assemble_mode_controller_->getCurrentZErrI();
       dessemble_mode_controller_->setCurrentZErrI(current_ErrZ);
     }

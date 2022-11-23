@@ -52,11 +52,14 @@ public:
   void assemble();
   void dessemble();
 
+  bool getControllerLock(){ return controller_lock_; }
+
 private:
 
   bool assemble_mode_;
   bool dessemble_mode_;
   bool initial_assemble_;
+  bool controller_lock_;
 
   // private functions
   void getParamFromRos();

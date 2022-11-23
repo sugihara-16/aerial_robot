@@ -55,6 +55,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
 
 //override
 bool AssembleController::update(){
+  if(assemble_robot_model_->getControllerLock()) return false;
   if(assemble_robot_model_->isAssemble()){
     if(!current_assemble_) {
       current_assemble_ = true;
@@ -63,7 +64,6 @@ bool AssembleController::update(){
       navigator_->setTargetYawFromCurrentState();
       // set current errI for gravity compensation
       double current_ErrI = dessemble_mode_controller_->getCurrentZErrI();
-      ROS_INFO("now z iterm is %f",current_ErrI);
       assemble_mode_controller_->setCurrentZErrI(current_ErrI);
     }
     if(!assemble_mode_controller_->ControlBase::update()) return false;

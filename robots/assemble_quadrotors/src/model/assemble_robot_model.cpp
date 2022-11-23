@@ -7,7 +7,8 @@ AssembleTiltedRobotModel::AssembleTiltedRobotModel(bool init_with_rosparam,
   HydrusTiltedRobotModel(init_with_rosparam, verbose, fc_t_min_thre, epsilon),
   assemble_mode_(false),
   dessemble_mode_(true),
-  initial_assemble_(false)
+  initial_assemble_(false),
+  controller_lock_(false)
 {
   // initialize frame mode
   getParamFromRos();
@@ -23,6 +24,7 @@ AssembleTiltedRobotModel::AssembleTiltedRobotModel(bool init_with_rosparam,
 
 void AssembleTiltedRobotModel::assemble()
 {
+  controller_lock_ = true;
   //initialize urdf model
   urdf::Model empty_model;
   aerial_robot_model::RobotModel::setUrdfModel(empty_model);
@@ -40,10 +42,13 @@ void AssembleTiltedRobotModel::assemble()
   // switch the model in the end
   assemble_mode_ = true;
   dessemble_mode_ = false;
+
+  controller_lock_ = false;
 }
 
 void AssembleTiltedRobotModel::dessemble()
 {
+  controller_lock_ = true;
   //initialize urdf model
   urdf::Model empty_model;
   aerial_robot_model::RobotModel::setUrdfModel(empty_model);
@@ -61,6 +66,7 @@ void AssembleTiltedRobotModel::dessemble()
   // switch the mode in the end
   assemble_mode_ = false;
   dessemble_mode_ = true;
+  controller_lock_ = false;
 }
 
 void AssembleTiltedRobotModel::getParamFromRos()

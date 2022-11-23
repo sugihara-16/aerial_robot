@@ -53,7 +53,7 @@ class DessembleDemo():
                 if now_time !=0.0:
                     break
             elapsed_time = (now_time - switched_time)
-            if(elapsed_time < 2):
+            if(elapsed_time < 1.0):
                 nav_msg_male = FlightNav()
                 nav_msg_male.target = 1
                 nav_msg_male.control_frame = 1
@@ -63,7 +63,7 @@ class DessembleDemo():
                 nav_msg_female.target = 1
                 nav_msg_female.control_frame = 1
                 nav_msg_female.pos_xy_nav_mode=1
-                nav_msg_female.target_vel_x = -0.3
+                nav_msg_female.target_vel_x = -0.5
                 self.male_velo_pub.publish(nav_msg_male)
                 self.female_velo_pub.publish(nav_msg_female)
             else:

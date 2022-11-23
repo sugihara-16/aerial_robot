@@ -8,20 +8,19 @@
   <arg name="rviz_init_pose" />
   <arg name="rviz_config" />
   <arg name="initial_assemble" />
-  <arg name="airframe"/>    
+  <arg name="airframe"/>
   <group ns="$(arg robot_ns)">
     <!-- set robot_description to rosparameter server -->
     <!--initial state -->
     <param name="initial_assemble" value="$(arg initial_assemble)"/>
     <!--airframe-->
     <param name="airframe" value="$(arg airframe)"/>
-    <!-- normal state -->
-    <param name="robot_description" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- assemble state -->
     <param name="assemble_robot" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- dessemble state -->
     <param name="dessemble_robot" command="$(find xacro)/xacro '$(arg dessemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
-
+    <!-- normal state -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(arg assemble_robot_model)' robot_name:=$(arg robot_ns)  $(arg model_options)" />
     <!-- tf publisher from joint_state -->
     <node name="$(anon robot_state_publisher)" pkg="robot_state_publisher" type="robot_state_publisher">
       <param name="tf_prefix" value="$(arg robot_ns)" />
@@ -31,7 +30,7 @@
     </node>
 
     <!-- rviz -->
-    <node name="$(anon rviz)" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" respawn="true" unless="$(arg headless)"/>
+    <node name="$(anon rviz)" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" respawn="true" unless="$(arg headless)" launch-prefix="bash -c 'sleep 3.0; $0 $@' "/>
   </group>
 
 </launch>

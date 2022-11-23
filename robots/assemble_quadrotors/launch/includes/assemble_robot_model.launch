@@ -30,7 +30,8 @@
     </node>
 
     <!-- rviz -->
-    <node name="$(anon rviz)" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" respawn="true" unless="$(arg headless)" launch-prefix="bash -c 'sleep 3.0; $0 $@' "/>
+    <!-- <node name="$(anon rviz)" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" respawn="true" unless="$(arg headless)" launch-prefix="bash -c 'sleep 3.0; $0 $@' "/> -->
+    <node name="$(anon rviz)" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" respawn="true" unless="$(arg headless)"/>
   </group>
 
 </launch>

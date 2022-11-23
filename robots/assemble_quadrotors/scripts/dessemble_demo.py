@@ -37,9 +37,10 @@ class DessembleDemo():
         rospy.sleep(0.5)
         self.switching_flag_male_pub.publish()
         self.switching_flag_female_pub.publish()
+        rospy.sleep(1.0)
         self.male_hand_pub.publish("open")
         # 2: wait for 0.5s and flight 1m away each other
-        rospy.sleep(0.5)
+        rospy.sleep(1.5)
         while(1): # loop to avoid zero_time
 
             switched_time = rospy.get_time()
@@ -53,27 +54,31 @@ class DessembleDemo():
                 if now_time !=0.0:
                     break
             elapsed_time = (now_time - switched_time)
-            if(elapsed_time < 2):
+            if(elapsed_time < 1.5):
                 nav_msg_male = FlightNav()
                 nav_msg_male.target = 1
+                nav_msg_male.control_frame = 1
                 nav_msg_male.pos_xy_nav_mode=1
                 nav_msg_male.target_vel_x = -0.5
                 nav_msg_female = FlightNav()
                 nav_msg_female.target = 1
+                nav_msg_female.control_frame = 1
                 nav_msg_female.pos_xy_nav_mode=1
-                nav_msg_female.target_vel_x = 0.3
+                nav_msg_female.target_vel_x = -0.3
                 self.male_velo_pub.publish(nav_msg_male)
                 self.female_velo_pub.publish(nav_msg_female)
             else:
                 #male
                 nav_msg_male = FlightNav()
                 nav_msg_male.target = 1
+                nav_msg_male.control_frame = 1
                 nav_msg_male.pos_xy_nav_mode=2
                 nav_msg_male.target_pos_x = self.male_now_pos_x
                 nav_msg_male.target_pos_y = self.male_now_pos_y
                 #female
                 nav_msg_female = FlightNav()
                 nav_msg_female.target = 1
+                nav_msg_female.control_frame = 1
                 nav_msg_female.pos_xy_nav_mode=2
                 nav_msg_female.target_pos_x = self.female_now_pos_x
                 nav_msg_female.target_pos_y = self.female_now_pos_y

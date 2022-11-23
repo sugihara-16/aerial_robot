@@ -67,6 +67,10 @@ namespace aerial_robot_control
     virtual bool update() override;
     virtual void reset() override;
     virtual void sendCmd();
+    double getCurrentZErrI(){ return pid_controllers_.at(Z).getErrI(); };
+    void setCurrentZErrI(double errI){pid_controllers_.at(Z).setErrI(errI); };
+    double getCurrentZITerm(){ return pid_controllers_.at(Z).getITerm(); };
+    void setCurrentZITerm(double i_term){pid_controllers_.at(Z).setITerm(i_term); };
 
   protected:
     ros::Publisher pid_pub_;

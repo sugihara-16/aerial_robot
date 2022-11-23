@@ -56,38 +56,45 @@ void AssembleController::initialize(ros::NodeHandle nh,
 //override
 bool AssembleController::update(){
   if(assemble_robot_model_->isAssemble()){
-  //   if(navigator_->getNaviState() == aerial_robot_navigation::ARM_OFF_STATE) {
-  //     send_once_flag_ = true;
-  //   }
-  //   if(navigator_->getNaviState() == aerial_robot_navigation::ARM_ON_STATE) {
-  //     if(send_once_flag_)
-  //       {
-  //         ROS_ERROR("assemble uav info is published");
-  //         /* send motor and uav , about 10Hz */
-  //         spinal::UavInfo uav_info_msg;
-  //         uav_info_msg.motor_num = 4;
-  //         uav_info_msg.uav_model = 0;
-  //         uav_info_pub_.publish(uav_info_msg);
-
-  //         send_once_flag_ = false;
-  //       }
-  //   }
-
-    if(!assemble_mode_controller_->ControlBase::update()) return false;
-    assemble_mode_controller_->controlCore();
-
     if(!current_assemble_) {
       current_assemble_ = true;
+      // set new target pos in current mode
+      navigator_->setTargetXyFromCurrentState();
+      navigator_->setTargetYawFromCurrentState();
+      // set current errI for gravity compensation
+      double current_ErrI = dessemble_mode_controller_->getCurrentZErrI();
+      ROS_INFO("now z iterm is %f",current_ErrI);
+      assemble_mode_controller_->setCurrentZErrI(current_ErrI);
     }
+    if(!assemble_mode_controller_->ControlBase::update()) return false;
+    if(!current_assemble_) {
+      send_once_flag_ = true;
+      current_assemble_ = true;
+      // set new target pos in current mode
+      navigator_->setTargetXyFromCurrentState();
+      navigator_->setTargetYawFromCurrentState();
+      // set current errI and ITerm for gravity compensation
+      // double current_ITerm = dessemble_mode_controller_->getCurrentZITerm();
+      // assemble_mode_controller_->setCurrentZITerm(current_ITerm);
+      double current_ErrZ = dessemble_mode_controller_->getCurrentZErrI();
+      assemble_mode_controller_->setCurrentZErrI(current_ErrZ);
+    }
+    assemble_mode_controller_->controlCore();
   }else{
     if(!dessemble_mode_controller_->ControlBase::update()) return false;
-    dessemble_mode_controller_->controlCore();
-
     if(current_assemble_) {
       current_assemble_ = false;
+      // set new target pos in current mode
+      navigator_->setTargetXyFromCurrentState();
+      navigator_->setTargetYawFromCurrentState();
+      // set current errI for gravity compensation
+      // double current_ITerm = assemble_mode_controller_->getCurrentZITerm();
+      // dessemble_mode_controller_->setCurrentZITerm(current_ITerm);
+      double current_ErrZ = assemble_mode_controller_->getCurrentZErrI();
+      dessemble_mode_controller_->setCurrentZErrI(current_ErrZ);
     }
+    dessemble_mode_controller_->controlCore();
   }
-
   sendCmd();
 }
 

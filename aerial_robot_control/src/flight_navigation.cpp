@@ -229,6 +229,9 @@ void BaseNavigator::naviCallback(const aerial_robot_msgs::FlightNavConstPtr & ms
         setTargetVelX(msg->target_vel_x);
         setTargetVelY(msg->target_vel_y);
 
+        setTargetAccX(msg->target_acc_x);
+        setTargetAccX(msg->target_acc_y);
+
         break;
       }
     case aerial_robot_msgs::FlightNav::ACC_MODE:

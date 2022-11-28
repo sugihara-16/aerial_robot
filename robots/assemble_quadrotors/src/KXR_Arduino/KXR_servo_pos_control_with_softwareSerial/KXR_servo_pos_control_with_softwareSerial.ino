@@ -9,7 +9,7 @@ const byte S_TX_PIN = 3;
 const byte EN_PIN = 2;
 const long BAUDRATE = 115200;
 const int TIMEOUT = 200;
-const int open_pos = 8200;
+const int open_pos = 7000;
 const int close_pos = 11300;
 
 IcsSoftSerialClass krs(S_RX_PIN,S_TX_PIN,EN_PIN,BAUDRATE,TIMEOUT);
@@ -24,7 +24,7 @@ void messageCb(const std_msgs::String& msg) {
     krs.setPos(0,open_pos); //open the hand
     nh.loginfo("Open the hand");
   }else{
-    krs.setSpd(0,40);
+    krs.setSpd(0,60);
     krs.setPos(0,close_pos); //close the hand
     nh.loginfo("Close the hand");
   }

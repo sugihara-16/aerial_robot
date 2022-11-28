@@ -30,7 +30,6 @@ if __name__=="__main__":
         male_takeoff_pub = rospy.Publisher(male_ns + '/takeoff', Empty, queue_size=1)
         male_force_landing_pub = rospy.Publisher(male_ns + '/force_landing', Empty, queue_size=1)
         male_ctrl_mode_pub = rospy.Publisher(male_ns + '/ctrl_mode', Int8, queue_size=1)
-        motion_start_pub = rospy.Publisher('task_start', Empty, queue_size=1)
 
         female_land_pub = rospy.Publisher(female_ns + '/land', Empty, queue_size=1)
         female_halt_pub = rospy.Publisher(female_ns + '/halt', Empty, queue_size=1)
@@ -39,7 +38,8 @@ if __name__=="__main__":
         female_force_landing_pub = rospy.Publisher(female_ns + '/force_landing', Empty, queue_size=1)
         female_ctrl_mode_pub = rospy.Publisher(female_ns + '/ctrl_mode', Int8, queue_size=1)
 
-        meotion_start_pub = rospy.Publisher('task_start', Empty, queue_size=1)
+        motion_start_pub = rospy.Publisher('assemble_start', Empty, queue_size=1)
+        motion_stop_pub  = rospy.Publisher('assemble_stop', Empty, queue_size=1)
 
 
 
@@ -67,11 +67,6 @@ if __name__=="__main__":
                         if key == 't':
                                 male_takeoff_pub.publish(Empty())
                                 female_takeoff_pub.publish(Empty())
-                        if key == 'u':
-                                male_stair_pub.publish(Empty())
-                                female_stair_pub.publish(Empty())
-                        if key == 'x':
-                                motion_start_pub.publish()
                         if key == 'v':
                                 comm.data = 1
                                 male_ctrl_mode_pub.publish(comm)
@@ -80,6 +75,10 @@ if __name__=="__main__":
                                 comm.data = 0
                                 male_ctrl_mode_pub.publish(comm)
                                 female_ctrl_mode_pub.publish(comm)
+                        if key == 's':
+                                motion_start_pub.publish(Empty())
+                        if key == 'e':
+                                motion_stop_pub.publish(Empty())
                         if key == '\x03':
                                 break
                         rospy.sleep(0.001)

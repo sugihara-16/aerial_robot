@@ -132,7 +132,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_dual_quadrotors_v3_neutral.STL" />
+        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_dual_quadrotors_v4_neutral.STL" />
       </geometry>
     </visual>
     <collision>

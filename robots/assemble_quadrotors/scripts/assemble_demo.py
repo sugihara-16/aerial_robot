@@ -31,7 +31,6 @@ class AssembleDemo():
         # state variables
         self.diff = np.zeros(2 , dtype = float) #male's [x,y,z] from female
         self.diff_pre = np.zeros(2 , dtype = float)
-        self.target_state = np.array([0.42 + 0.3, 0.0])
         self.error = np.zeros(2 , dtype = float)
         self.pre_error = np.zeros(2 , dtype = float)
         self.integral = np.zeros(2 , dtype = float)
@@ -45,9 +44,10 @@ class AssembleDemo():
         self.p_gain = np.array([0.01,0.01])
         self.i_gain = np.array([0.001, 0.006])
         self.d_gain = np.array([0.01,0.08])
-        self.target_diff = np.array([0.0, 0.0]) #face to face pos
+        self.target_diff = np.array([0.366, 0.0]) #face to face pos
         self.yaw_from_female = 3.141592 #target male's yaw from female
         self.target_z = 0.0
+        self.assemble_thre = 0.42 # open state : CoG diff is 384.52 , close state : CoG diff is 366.6
 
     def startCallback(self,msg):
         self.start_flag = True
@@ -120,6 +120,7 @@ class AssembleDemo():
                 target_acc = p_term + i_term + d_term
                 self.pre_error = self.error
 
+<<<<<<< variant A
                 #transform target values to world coordinate
                 # female_rot_from_world = np.array(tf.transformations.quaternion_matrix(female_from_world[1]))
                 female_euler = tf.transformations.euler_from_quaternion(female_from_world[1])
@@ -150,23 +151,57 @@ class AssembleDemo():
                 #send command
                 nav_msg_male = FlightNav()
                 nav_msg_male.target = 1
-                nav_msg_male.control_frame = 1
+>>>>>>> variant B
+                nav_msg_male.control_frame = 0
+======= end
                 nav_msg_male.pos_xy_nav_mode=2
                 nav_msg_male.pos_z_nav_mode=2
                 nav_msg_male.yaw_nav_mode=2
                 nav_msg_male.target_acc_x = homo_transformed_target_acc[0][0]
                 nav_msg_male.target_acc_y = homo_transformed_target_acc[0][1]
-                # nav_msg_male.target_pos_x = female_from_world[0][0] - 0.42 -0.2
-                # nav_msg_male.target_pos_y = female_from_world[0][1]
-                # nav_msg_male.target_pos_z = female_from_world[0][2]
+<<<<<<< variant A
+>>>>>>> variant B
+                nav_msg_male.target_vel_x = 0.02
+                nav_msg_male.target_vel_y = 0.01
+======= end
                 nav_msg_male.target_pos_x = homo_transformed_target_pos[0][0]
                 nav_msg_male.target_pos_y = homo_transformed_target_pos[0][1]
+<<<<<<< variant A
                 nav_msg_male.target_pos_z = female_from_world[0][2]
+>>>>>>> variant B
+======= end
                 nav_msg_male.target_yaw = (tf.transformations.euler_from_quaternion(homo_transformed_target_pos[1]))[2]
                 self.male_nav_pub.publish(nav_msg_male)
-
-                #TODO: check assemble or not, then close the hand and switch to assemble mode
+<<<<<<< variant A
+>>>>>>> variant B
+======= end
                 r.sleep()
+<<<<<<< variant A
+>>>>>>> variant B
+            else:
+                break
+            #TODO: check assemble or not, then close the hand and switch to assemble mode
+
+        nav_msg_male = FlightNav()
+        nav_msg_male.target = 1
+        nav_msg_male.control_frame = 1
+        nav_msg_male.pos_xy_nav_mode=1
+        nav_msg_male.target_vel_x = 0.02
+        nav_msg_male.target_vel_y = 0
+        self.female_nav_pub.publish(nav_msg_male)
+        nav_msg_female = FlightNav()
+        nav_msg_female.target = 1
+        nav_msg_female.control_frame = 1
+        nav_msg_female.pos_xy_nav_mode=1
+        nav_msg_female.target_vel_x = -0.01
+        nav_msg_female.target_vel_y = 0
+        self.male_nav_pub.publish(nav_msg_male)
+        rospy.sleep(2)
+        self.male_hand_pub.publish("close")
+        rospy.sleep(2)
+        self.switching_flag_male_pub.publish()
+        self.switching_flag_female_pub.publish()
+======= end
 if __name__=="__main__":
     try:
         assemble_demo = AssembleDemo();

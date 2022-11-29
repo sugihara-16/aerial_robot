@@ -57,18 +57,8 @@ void AssembleController::initialize(ros::NodeHandle nh,
 bool AssembleController::update(){
   if(assemble_robot_model_->getControllerLock()) return false;
   if(assemble_robot_model_->isAssemble()){
-    if(!current_assemble_) {
-      current_assemble_ = true;
-      // set new target pos in current mode
-      navigator_->setTargetXyFromCurrentState();
-      navigator_->setTargetYawFromCurrentState();
-      // set current errI for gravity compensation
-      double current_ErrI = dessemble_mode_controller_->getCurrentZErrI();
-      assemble_mode_controller_->setCurrentZErrI(current_ErrI);
-    }
     if(!assemble_mode_controller_->ControlBase::update()) return false;
     if(!current_assemble_) {
-      send_once_flag_ = true;
       current_assemble_ = true;
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();

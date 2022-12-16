@@ -5,7 +5,7 @@
   <arg name="port" default="/dev/ttyUSB0" />
   <arg name="baud" default="115200" />
 
-  <group if="$(eval real_machine and airframe=='male' )">
+  <group if="$(eval real_machine)">
     <group ns="$(arg robot_ns)">
       <node pkg="rosserial_python" type="serial_node.py" name="serial_node" output="screen">
         <param name="port" value="$(arg port)" />

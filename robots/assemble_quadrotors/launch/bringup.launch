@@ -129,11 +129,11 @@
     <arg name="headless" value="$(arg headless)" />
 
     <!-- assemble and dessemble model for switching function -->
-    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_male.$(arg description_mode).xacro" if="$(eval airframe == 'male' or airframe == 'neutral')"/>
-    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
+    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_male_mag.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
+    <arg name="assemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_female_mag.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
     <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_neutral.$(arg description_mode).xacro" if="$(eval airframe == 'neutral')"/>
-    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
-    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_female.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
+    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_male_mag.$(arg description_mode).xacro" if="$(eval airframe == 'male')"/>
+    <arg name="dessemble_robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_female_mag.$(arg description_mode).xacro" if="$(eval airframe == 'female')"/>
     <!-- <arg name="robot_model" value="$(find assemble_quadrotors)/urdf/assemble_dual_quadrotors_whole_male.$(arg description_mode).xacro"/> -->
     <arg name="robot_model" value="$(arg direct_model_name)" if="$(arg direct_model)"/>
     <arg name="robot_ns" value="$(arg robot_ns)"/>

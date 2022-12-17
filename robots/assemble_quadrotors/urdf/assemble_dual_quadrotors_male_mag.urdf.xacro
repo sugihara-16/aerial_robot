@@ -123,12 +123,12 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <mass value = "1.26347288" />
-      <origin xyz="0.00295047 -0.00151693 0.00015592" rpy="0 0 0"/>
+      <mass value = "1.2266" />
+      <origin xyz="0.0030 -0.0016 -0.00015" rpy="0 0 0"/>
     <inertia
-        ixx="0.00694153" ixy="0.00003221" ixz="-0.00070136"
-        iyy="0.01575032" iyz="-0.00003297"
-        izz="0.01974271"/>
+        ixx="0.00611" ixy="0.0000" ixz="-0.00073"
+        iyy="0.01498" iyz="-0.0000"
+        izz="0.01839"/>
     </inertial>
 
     <visual>

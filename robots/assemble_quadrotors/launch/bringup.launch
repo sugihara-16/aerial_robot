@@ -41,7 +41,7 @@
 
     ###########  Motor Config  ###########
     <!-- <rosparam file="$(arg config_dir)/MotorInfo_5inch.yaml" command="load" /> -->
-    <rosparam file="$(arg config_dir)/AssembleMotorInfo_5inch.yaml" command="load" />
+    <rosparam file="$(arg config_dir)/MotorInfo_6inch.yaml" command="load" />
 
     ###########  Battery Config  ###########
     <rosparam file="$(arg config_dir)/Battery.yaml" command="load" />

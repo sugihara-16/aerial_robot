@@ -17,6 +17,7 @@ class DessembleDemo():
         self.male_velo_pub = rospy.Publisher("assemble_quadrotors1/uav/nav", FlightNav, queue_size=10)
         self.female_velo_pub = rospy.Publisher("assemble_quadrotors2/uav/nav", FlightNav, queue_size=10)
         self.male_hand_pub = rospy.Publisher("assemble_quadrotors1/hand_command",String , queue_size=10)
+        self.female_hand_pub = rospy.Publisher("assemble_quadrotors2/hand_command",String , queue_size=10)
         self.male_mocap_sub = rospy.Subscriber('assemble_quadrotors1/mocap/pose', PoseStamped, self.malePoseCallback)
         self.female_mocap_sub = rospy.Subscriber('assemble_quadrotors2/mocap/pose', PoseStamped, self.femalePoseCallback)
 
@@ -35,12 +36,15 @@ class DessembleDemo():
     def main(self):
         # 1: switch to dessemble mode and open the hand
         rospy.sleep(0.5)
+        self.male_hand_pub.publish("close") #eject peg
+        rospy.sleep(1.0)
+        self.female_hand_pub.publish("open") #inactivate magnet
+        self.female_hand_pub.publish("open") #inactivate magnet
+        self.female_hand_pub.publish("open") #inactivate magnet
         self.switching_flag_male_pub.publish()
         self.switching_flag_female_pub.publish()
-        rospy.loginfo(1.0)
-        self.male_hand_pub.publish("open")
         # 2: wait for 0.5s and flight 1m away each other
-        rospy.sleep(1.0)
+        rospy.sleep(0.5)
         while(1): # loop to avoid zero_time
 
             switched_time = rospy.get_time()
@@ -54,7 +58,7 @@ class DessembleDemo():
                 if now_time !=0.0:
                     break
             elapsed_time = (now_time - switched_time)
-            if(elapsed_time < 3.0):
+            if(elapsed_time < 2.0):
                 nav_msg_male = FlightNav()
                 nav_msg_male.target = 1
                 nav_msg_male.control_frame = 1

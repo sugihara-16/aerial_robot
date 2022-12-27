@@ -54,10 +54,11 @@ class AssembleDemo():
         self.i_gain = np.array([0.00,0.06])
         self.d_gain = np.array([0.0,0.08])
         self.y_offset = 0.0
-        self.target_diff = np.array([0.42, self.y_offset]) #face to face pos
+        self.x_offset = 0.5 #0.481 + a
         self.yaw_from_female = 3.141592 #target male's yaw from female
         self.target_z = 0.0
-        self.assemble_thre_1 = 0.45 # CoG diff is 431
+        self.tolerable_error = np.array([-0.01, 0.02, 0.02]) # CoG diff is 431
+        self.target_diff = np.array([self.x_offset, self.y_offset]) #face to face pos
 
     def malePoseCallback(self,msg):
        self.male_now_pos_x= msg.pose.position.x
@@ -166,7 +167,7 @@ class AssembleDemo():
                                       rospy.Time.now(),
                                       "male_target_values",
                                       "/assemble_quadrotors2/root")
-                self.br.sendTransform((0.42, self.y_offset , 0),
+                self.br.sendTransform((self.target_diff[0], self.target_diff[1] , 0),
                                       tf.transformations.quaternion_from_euler(0, 0, self.yaw_from_female),
                                       rospy.Time.now(),
                                       "male_target_pos",
@@ -180,7 +181,7 @@ class AssembleDemo():
                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                     continue
                 #send command
-                if(male_female_pos[0] > self.assemble_thre_1 or abs(male_female_pos[1]) > 0.02):
+                if(self.error[0] < self.tolerable_error[0] or abs(self.error[1]) > self.tolerable_error[1] or abs(male_female_pos[2]) > self.tolerable_error[2]):
                     #male
                     nav_msg_male = FlightNav()
                     nav_msg_male.target = 1
@@ -196,19 +197,9 @@ class AssembleDemo():
                     nav_msg_male.target_pos_z = female_from_world[0][2]
                     nav_msg_male.target_yaw = (tf.transformations.euler_from_quaternion(homo_transformed_target_pos[1]))[2]
                     self.male_nav_pub.publish(nav_msg_male)
-                    #female
-                    # nav_msg_female = FlightNav()
-                    # nav_msg_female.target = 1
-                    # nav_msg_female.control_frame = 0
-                    # nav_msg_female.pos_xy_nav_mode=1
-                    # nav_msg_female.yaw_nav_mode=2
-                    # nav_msg_female.target_vel_x = -0.05
-                    # nav_msg_female.target_vel_y = 0.0
-                    # nav_msg_female.target_yaw = 3.14
-                    # self.female_nav_pub.publish(nav_msg_female)
                     self.close_time = 0
                 else:
-                    rospy.loginfo("activating")
+                    rospy.loginfo("processeing")
                     #male
                     nav_msg_male = FlightNav()
                     nav_msg_male.target = 1
@@ -217,19 +208,19 @@ class AssembleDemo():
                     nav_msg_male.target_vel_x = 0.01
                     nav_msg_male.target_vel_y = 0.0
                     self.male_nav_pub.publish(nav_msg_male)
-                    #female
-                    nav_msg_female = FlightNav()
-                    nav_msg_female.target = 1
-                    nav_msg_female.control_frame = 1
-                    nav_msg_female.pos_xy_nav_mode=1
-                    nav_msg_female.target_vel_x = 0.01
-                    nav_msg_female.target_vel_y = 0.0
-                    self.female_nav_pub.publish(nav_msg_female)
+                    # #female
+                    # nav_msg_female = FlightNav()
+                    # nav_msg_female.target = 1
+                    # nav_msg_female.control_frame = 1
+                    # nav_msg_female.pos_xy_nav_mode=1
+                    # nav_msg_female.target_vel_x = 0.01
+                    # nav_msg_female.target_vel_y = 0.0
+                    # self.female_nav_pub.publish(nav_msg_female)
                     if(not self.start_flag):
                         break
                     if(not self.close_time):
                         self.close_time = rospy.get_time()
-                    if(self.close_time != 0  and  (rospy.get_time() - self.close_time) > 1.5):
+                    if(self.close_time != 0  and  (rospy.get_time() - self.close_time) > 8.5):
                         self.male_hand_pub.publish("open") #peg insert
                         #male
                         nav_msg_male = FlightNav()

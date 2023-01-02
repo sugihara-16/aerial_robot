@@ -125,6 +125,7 @@ namespace aerial_robot_model {
       std::lock_guard<std::mutex> lock(mutex_desired_baselink_rot_);
       cog_desire_orientation_  = cog_desire_orientation;
     }
+    void setMass(double mass){ mass_ = mass; }
 
     bool addExtraModule(std::string module_name, std::string parent_link_name, KDL::Frame transform, KDL::RigidBodyInertia inertia);
     bool removeExtraModule(std::string module_name);

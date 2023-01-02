@@ -26,6 +26,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
   ros::NodeHandle assemble_control_nh = ros::NodeHandle(nh_, "assemble/controller");
   assemble_control_nh.param("torque_allocation_matrix_inv_pub_interval", torque_allocation_matrix_inv_pub_interval_, 0.1);
   assemble_control_nh.param("wrench_allocation_matrix_pub_interval", wrench_allocation_matrix_pub_interval_, 0.1);
+  assemble_control_nh.param("trans_rate", trans_rate_, 1.0);
 
   assemble_mode_controller_ = boost::make_shared<FullyActuatedController>();
   dessemble_mode_controller_ = boost::make_shared<HydrusTiltedLQIController>();
@@ -37,8 +38,6 @@ void AssembleController::initialize(ros::NodeHandle nh,
   dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator_, ctrl_loop_rate);
   dessemble_mode_controller_->optimalGain(); // calculate LQI gain for once
 
-  send_once_flag_ = true;
-
 
   //adjust robot model for true state
   if(current_assemble_)
@@ -49,7 +48,9 @@ void AssembleController::initialize(ros::NodeHandle nh,
     {
       assemble_robot_model_->dessemble();
     }
-
+  mass_trans_count_ = 0;
+  mass_trans_ = 0;
+  true_mass_ = 0;
 
 }
 
@@ -58,8 +59,14 @@ bool AssembleController::update(){
   if(assemble_robot_model_->getControllerLock()) return false;
   if(assemble_robot_model_->isAssemble()){
     if(!assemble_mode_controller_->ControlBase::update()) return false;
+    mass_trans_count_ += 1.0;
+    transMassCalc();
+    assemble_robot_model_->setMass(mass_trans_);
     if(!current_assemble_) {
       current_assemble_ = true;
+      true_mass_ = assemble_robot_model_->getMass();
+      mass_trans_count_ = 1.0;
+      transMassCalc();
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
@@ -160,6 +167,7 @@ void AssembleController::sendCmd(){
 
   }
 }
+
 
 /* plugin registration */
 #include <pluginlib/class_list_macros.h>

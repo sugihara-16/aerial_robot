@@ -33,8 +33,10 @@ void AssembleController::initialize(ros::NodeHandle nh,
   current_assemble_ = assemble_robot_model_->isAssemble();
 
   assemble_robot_model_->assemble(); //switching robot model
+  assemble_mass_ = assemble_robot_model_->getMass();
   assemble_mode_controller_->initialize(assemble_nh_, nhp, assemble_robot_model_, estimator, navigator_, ctrl_loop_rate);
   assemble_robot_model_->dessemble(); //switching robot model
+  dessemble_mass_ = assemble_robot_model_->getMass();
   dessemble_mode_controller_->initialize(dessemble_nh_, nhp, assemble_robot_model_, estimator, navigator_, ctrl_loop_rate);
   dessemble_mode_controller_->optimalGain(); // calculate LQI gain for once
 
@@ -50,7 +52,6 @@ void AssembleController::initialize(ros::NodeHandle nh,
     }
   mass_trans_count_ = 0;
   mass_trans_ = 0;
-  true_mass_ = assemble_robot_model_->getMass();
 
 }
 
@@ -60,13 +61,12 @@ bool AssembleController::update(){
   if(assemble_robot_model_->isAssemble()){
     if(!assemble_mode_controller_->ControlBase::update()) return false;
     mass_trans_count_ += 1.0;
-    transMassCalc();
+    transMassCalc(assemble_mass_);
     assemble_robot_model_->setMass(mass_trans_);
     if(!current_assemble_) {
       current_assemble_ = true;
-      true_mass_ = assemble_robot_model_->getMass();
       mass_trans_count_ = 1.0;
-      transMassCalc();
+      transMassCalc(assemble_mass_);
       assemble_robot_model_->setMass(mass_trans_);
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();

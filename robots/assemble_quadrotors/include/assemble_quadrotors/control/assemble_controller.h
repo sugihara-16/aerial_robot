@@ -61,12 +61,13 @@ namespace aerial_robot_control
     double mass_trans_count_;
     double mass_trans_;
     double trans_rate_;
-    double true_mass_;
+    double assemble_mass_;
+    double dessemble_mass_;
 
   private:
     void sendCmd() override;
-    void transMassCalc(){
-      mass_trans_= true_mass_ * (1-1/(mass_trans_count_ - 1/(trans_rate_ -1)));
+    void transMassCalc(double true_mass){
+      mass_trans_= true_mass * (1-1/(mass_trans_count_ - 1/(trans_rate_ -1)));
     }
     bool current_assemble_;
 

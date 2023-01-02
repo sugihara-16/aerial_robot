@@ -50,7 +50,7 @@ void AssembleController::initialize(ros::NodeHandle nh,
     }
   mass_trans_count_ = 0;
   mass_trans_ = 0;
-  true_mass_ = 0;
+  true_mass_ = assemble_robot_model_->getMass();
 
 }
 
@@ -67,6 +67,7 @@ bool AssembleController::update(){
       true_mass_ = assemble_robot_model_->getMass();
       mass_trans_count_ = 1.0;
       transMassCalc();
+      assemble_robot_model_->setMass(mass_trans_);
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();
       navigator_->setTargetYawFromCurrentState();

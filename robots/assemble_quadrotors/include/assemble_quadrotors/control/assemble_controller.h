@@ -58,16 +58,22 @@ namespace aerial_robot_control
 
     bool update() override;
 
+    double mass_trans_count_;
+    double mass_trans_;
+    double trans_rate_;
+    double true_mass_;
+
   private:
     void sendCmd() override;
+    void transMassCalc(){
+      mass_trans_= true_mass_ * (1-1/(mass_trans_count_ - 1/(trans_rate_ -1)));
+    }
     bool current_assemble_;
 
     boost::shared_ptr<HydrusTiltedLQIController> dessemble_mode_controller_;
     boost::shared_ptr<FullyActuatedController> assemble_mode_controller_;
 
     ros::Publisher desired_baselink_rot_pub_;
-
-    bool send_once_flag_;
 
   protected:
     ros::NodeHandle assemble_nh_;

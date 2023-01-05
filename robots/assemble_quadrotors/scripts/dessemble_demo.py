@@ -37,7 +37,7 @@ class DessembleDemo():
         # 1: switch to dessemble mode and open the hand
         rospy.sleep(0.5)
         self.male_hand_pub.publish("close") #eject peg
-        rospy.sleep(1.0)
+        rospy.sleep(1.5)
         self.female_hand_pub.publish("open") #inactivate magnet
         self.female_hand_pub.publish("open") #inactivate magnet
         self.female_hand_pub.publish("open") #inactivate magnet
@@ -63,12 +63,12 @@ class DessembleDemo():
                 nav_msg_male.target = 1
                 nav_msg_male.control_frame = 1
                 nav_msg_male.pos_xy_nav_mode=1
-                nav_msg_male.target_vel_x = -0.3
+                nav_msg_male.target_vel_x = -0.1
                 nav_msg_female = FlightNav()
                 nav_msg_female.target = 1
                 nav_msg_female.control_frame = 1
                 nav_msg_female.pos_xy_nav_mode=1
-                nav_msg_female.target_vel_x = -0.3
+                nav_msg_female.target_vel_x = -0.5
                 self.male_velo_pub.publish(nav_msg_male)
                 self.female_velo_pub.publish(nav_msg_female)
             else:

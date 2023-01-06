@@ -182,6 +182,7 @@ namespace aerial_robot_control
 
 
     pid_pub_ = nh_.advertise<aerial_robot_msgs::PoseControlPid>("debug/pose/pid", 10);
+    du_pub_ = nh_.advertise<std_msgs::Float32>("debug/pose/du", 10);
   }
 
   void PoseLinearController::reset()
@@ -349,6 +350,10 @@ namespace aerial_robot_control
     pid_msg_.yaw.err_p = err_yaw;
     pid_msg_.yaw.target_d = target_omega_.z();
     pid_msg_.yaw.err_d = target_omega_.z() - omega_.z();
+
+    //du pub
+    du_msg_.data = du;
+    du_pub_.publish(du_msg_);
   }
 
   void PoseLinearController::sendCmd()

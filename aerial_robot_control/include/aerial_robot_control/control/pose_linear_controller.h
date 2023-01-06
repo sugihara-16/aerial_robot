@@ -74,10 +74,12 @@ namespace aerial_robot_control
 
   protected:
     ros::Publisher pid_pub_;
+    ros::Publisher du_pub_;
 
     std::vector<PID> pid_controllers_;
     std::vector<boost::shared_ptr<PidControlDynamicConfig> > pid_reconf_servers_;
     aerial_robot_msgs::PoseControlPid pid_msg_;
+    std_msgs::Float32 du_msg_;
 
     bool need_yaw_d_control_;
     bool start_rp_integration_;

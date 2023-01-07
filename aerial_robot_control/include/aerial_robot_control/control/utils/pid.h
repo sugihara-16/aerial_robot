@@ -49,22 +49,23 @@ namespace aerial_robot_control
     PID(const std::string name = std::string(""),
         const double p_gain = 0, const double i_gain = 0, const double d_gain = 0,
         const double limit_sum = 1e6, const double limit_p = 1e6, const double limit_i = 1e6, const double limit_d = 1e6,
-        const double limit_err_p = 1e6, const double limit_err_i = 1e6, const double limit_err_d = 1e6):
+        const double limit_err_p = 1e6, const double limit_err_i = 1e6, const double limit_err_d = 1e6, const double limit_du_err = 0.002):
       name_(name), result_(0), err_p_(0), err_i_(0), err_i_prev_(0), err_d_(0),
       target_p_(0), target_d_(0), val_p_(0), val_d_(0),
       p_term_(0), i_term_(0), d_term_(0)
     {
       setGains(p_gain, i_gain, d_gain);
-      setLimits(limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d);
+      setLimits(limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d, limit_du_err);
     }
 
     virtual ~PID() = default;
 
     virtual void update(const double err_p, const double du, const double err_d, const double feedforward_term = 0)
     {
+      du_  = clamp(du, 0.025 - limit_du_err_, 0.025+limit_du_err_);
       err_p_ = clamp(err_p, -limit_err_p_, limit_err_p_);
       err_i_prev_ = err_i_;
-      err_i_ = clamp(err_i_ + err_p_ * du, -limit_err_i_, limit_err_i_);
+      err_i_ = clamp(err_i_ + err_p_ * du_, -limit_err_i_, limit_err_i_);
       err_d_ = clamp(err_d, -limit_err_d_, limit_err_d_);
 
       p_term_ = clamp(err_p_ * p_gain_, -limit_p_, limit_p_);
@@ -110,7 +111,8 @@ namespace aerial_robot_control
     void setLimitErrP(const double limit_err_p) {limit_err_p_ = limit_err_p; }
     void setLimitErrI(const double limit_err_i) {limit_err_i_ = limit_err_i; }
     void setLimitErrD(const double limit_err_d) {limit_err_d_ = limit_err_d; }
-    void setLimits(const double limit_sum, const double limit_p, const double limit_i, const double limit_d, const double limit_err_p, const double limit_err_i, const double limit_err_d)
+    void setLimitDuErr(const double limit_du_err) {limit_du_err_ = limit_du_err; }
+    void setLimits(const double limit_sum, const double limit_p, const double limit_i, const double limit_d, const double limit_err_p, const double limit_err_i, const double limit_err_d, const double limit_du_err)
     {
       setLimitSum(limit_sum);
       setLimitP(limit_p);
@@ -119,6 +121,7 @@ namespace aerial_robot_control
       setLimitErrP(limit_err_p);
       setLimitErrI(limit_err_i);
       setLimitErrD(limit_err_d);
+      setLimitDuErr(limit_du_err);
     }
 
     const std::string getName() const { return name_;}
@@ -142,8 +145,10 @@ namespace aerial_robot_control
     double p_gain_, i_gain_, d_gain_;
     double p_term_, i_term_, d_term_;
     double err_p_, err_i_, err_i_prev_, err_d_;
+    double du_;
     double limit_sum_, limit_p_, limit_i_, limit_d_;
     double limit_err_p_, limit_err_i_, limit_err_d_;
+    double limit_du_err_;
     double target_p_, target_d_;
     double val_p_, val_d_;
   };

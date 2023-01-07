@@ -97,6 +97,7 @@ namespace aerial_robot_control
 
     double limit_sum, limit_p, limit_i, limit_d;
     double limit_err_p, limit_err_i, limit_err_d;
+    double limit_du_err;
     double p_gain, i_gain, d_gain;
 
     auto loadParam = [&, this](ros::NodeHandle nh)
@@ -108,6 +109,7 @@ namespace aerial_robot_control
         getParam<double>(nh, "limit_err_p", limit_err_p, 1.0e6);
         getParam<double>(nh, "limit_err_i", limit_err_i, 1.0e6);
         getParam<double>(nh, "limit_err_d", limit_err_d, 1.0e6);
+        getParam<double>(nh, "limit_du_err", limit_du_err, 0.002);
 
         getParam<double>(nh, "p_gain", p_gain, 0.0);
         getParam<double>(nh, "i_gain", i_gain, 0.0);
@@ -118,8 +120,8 @@ namespace aerial_robot_control
     if(xy_nh.hasParam("p_gain"))
       {
         loadParam(xy_nh);
-        pid_controllers_.push_back(PID("x", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
-        pid_controllers_.push_back(PID("y", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+        pid_controllers_.push_back(PID("x", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
+        pid_controllers_.push_back(PID("y", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
 
         std::vector<int> indices = {X, Y};
         pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(xy_nh));
@@ -128,12 +130,12 @@ namespace aerial_robot_control
     else
       {
         loadParam(x_nh);
-        pid_controllers_.push_back(PID("x", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+        pid_controllers_.push_back(PID("x", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
         pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(x_nh));
         pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, std::vector<int>(1, X)));
 
         loadParam(y_nh);
-        pid_controllers_.push_back(PID("y", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+        pid_controllers_.push_back(PID("y", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
         pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(y_nh));
         pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, std::vector<int>(1, Y)));
       }
@@ -145,7 +147,7 @@ namespace aerial_robot_control
     if(force_landing_descending_rate_ >= 0) force_landing_descending_rate_ = -0.5;
 
     loadParam(z_nh);
-    pid_controllers_.push_back(PID("z", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+    pid_controllers_.push_back(PID("z", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
     pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(z_nh));
     pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, std::vector<int>(1, Z)));
 
@@ -154,8 +156,8 @@ namespace aerial_robot_control
     if(roll_pitch_nh.hasParam("p_gain"))
       {
         loadParam(roll_pitch_nh);
-        pid_controllers_.push_back(PID("roll", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
-        pid_controllers_.push_back(PID("pitch", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+        pid_controllers_.push_back(PID("roll", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d, limit_du_err));
+        pid_controllers_.push_back(PID("pitch", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
         std::vector<int> indices = {ROLL, PITCH};
         pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(roll_pitch_nh));
         pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, indices));
@@ -163,12 +165,12 @@ namespace aerial_robot_control
     else
       {
         loadParam(roll_nh);
-        pid_controllers_.push_back(PID("roll", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+        pid_controllers_.push_back(PID("roll", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
         pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(roll_nh));
         pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, std::vector<int>(1, ROLL)));
 
         loadParam(pitch_nh);
-        pid_controllers_.push_back(PID("pitch", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+        pid_controllers_.push_back(PID("pitch", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
         pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(pitch_nh));
         pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, std::vector<int>(1, PITCH)));
       }
@@ -176,7 +178,7 @@ namespace aerial_robot_control
     /* yaw */
     loadParam(yaw_nh);
     getParam<bool>(yaw_nh, "need_d_control", need_yaw_d_control_, false);
-    pid_controllers_.push_back(PID("yaw", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d));
+    pid_controllers_.push_back(PID("yaw", p_gain, i_gain, d_gain, limit_sum, limit_p, limit_i, limit_d, limit_err_p, limit_err_i, limit_err_d,limit_du_err));
     pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(yaw_nh));
     pid_reconf_servers_.back()->setCallback(boost::bind(&PoseLinearController::cfgPidCallback, this, _1, _2, std::vector<int>(1, YAW)));
 

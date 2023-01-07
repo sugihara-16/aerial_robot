@@ -14,6 +14,7 @@ assemble:
       limit_p: 12.0
       limit_i: 12.0
       limit_d: 12.0
+      limit_du_err : 0.002
 
     z:
       p_gain: 6.0
@@ -24,6 +25,7 @@ assemble:
       limit_p: 25.0
       limit_i: 25.0
       limit_d: 25.0
+      limit_du_err : 0.002
       landing_err_z: -0.05
       force_landing_descending_rate: -0.5
 
@@ -35,6 +37,7 @@ assemble:
       limit_p: 20.0
       limit_i: 20.0
       limit_d: 20.0
+      limit_du_err : 0.002
 
       start_rp_integration_height: 0.01
 
@@ -47,6 +50,7 @@ assemble:
       limit_p: 20.0
       limit_i: 20.0
       limit_d: 20.0
+      limit_du_err : 0.002
 
       need_d_control: false
 
@@ -61,6 +65,7 @@ male:
       limit_p: 3
       limit_i: 1.5
       limit_d: 3
+      limit_du_err : 0.002
 
     z:
       p_gain: 6.0
@@ -71,6 +76,7 @@ male:
       limit_p: 160 # m / s^2
       limit_i: 160 # m / s^2
       limit_d: 160 # m / s^2
+      limit_du_err : 0.002
       landing_err_z: -0.05
       force_landing_descending_rate: -0.6
 
@@ -80,6 +86,7 @@ male:
       limit_i: 4.0
       limit_d: 4.0
       limit_err_p: 0.4
+      limit_du_err : 0.002
       need_d_control: false
 
     # LQI gain generator
@@ -115,6 +122,7 @@ female:
       limit_p: 3
       limit_i: 1.5
       limit_d: 3
+      limit_du_err : 0.002
 
     z:
       p_gain: 6.0
@@ -125,6 +133,7 @@ female:
       limit_p: 160 # m / s^2
       limit_i: 160 # m / s^2
       limit_d: 160 # m / s^2
+      limit_du_err : 0.002
       landing_err_z: -0.05
       force_landing_descending_rate: -0.6
 
@@ -134,6 +143,7 @@ female:
       limit_i: 4.0
       limit_d: 4.0
       limit_err_p: 0.4
+      limit_du_err : 0.002
       need_d_control: false
 
     # LQI gain generator
@@ -168,6 +178,7 @@ neutral:
       limit_p: 3
       limit_i: 1.5
       limit_d: 3
+      limit_du_err : 0.002
 
     z:
       p_gain: 6.0
@@ -178,6 +189,7 @@ neutral:
       limit_p: 160 # m / s^2
       limit_i: 160 # m / s^2
       limit_d: 160 # m / s^2
+      limit_du_err : 0.002
       landing_err_z: -0.05
       force_landing_descending_rate: -0.6
 
@@ -187,6 +199,7 @@ neutral:
       limit_i: 4.0
       limit_d: 4.0
       limit_err_p: 0.4
+      limit_du_err : 0.002
       need_d_control: false
 
     # LQI gain generator

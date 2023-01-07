@@ -50,8 +50,10 @@ void AssembleController::initialize(ros::NodeHandle nh,
     {
       assemble_robot_model_->dessemble();
     }
-  mass_trans_count_ = 0;
+  mass_trans_count_ = 100.0;
   mass_trans_ = 0;
+  assemble_base_thrust_sum_ = 0;
+  dessemble_base_thrust_sum_ = 0;
 
 }
 
@@ -65,7 +67,7 @@ bool AssembleController::update(){
     assemble_robot_model_->setMass(mass_trans_);
     if(!current_assemble_) {
       current_assemble_ = true;
-      mass_trans_count_ = 1.0;
+      mass_trans_count_ = 0.0;
       transMassCalc(assemble_mass_);
       assemble_robot_model_->setMass(mass_trans_);
       // set new target pos in current mode
@@ -80,7 +82,9 @@ bool AssembleController::update(){
     assemble_mode_controller_->controlCore();
   }else{
     if(!dessemble_mode_controller_->ControlBase::update()) return false;
+    mass_trans_count_ += 1.0;
     if(current_assemble_) {
+      mass_trans_count_ = 0.0;
       current_assemble_ = false;
       // set new target pos in current mode
       navigator_->setTargetXyFromCurrentState();
@@ -107,11 +111,26 @@ void AssembleController::sendCmd(){
     auto all_target_base_thrust = assemble_mode_controller_->getTargetBaseThrust(); // 8 elements
     if(airframe_ == "male") {
       std::vector<float> target_base_thrust {all_target_base_thrust.begin(), all_target_base_thrust.begin()+4};
+      assemble_base_thrust_sum_ = std::accumulate(target_base_thrust.begin(), target_base_thrust.end(), 0.0);
+      double sum_ratio = transThrustSumCalc(assemble_base_thrust_sum_, dessemble_base_thrust_sum_);
+      // ROS_INFO("ratio is %f", sum_ratio);
+      for(int i = 0; i<4; i++)
+        {
+          target_base_thrust[i] = target_base_thrust[i] * sum_ratio;
+        }
       flight_command_data.base_thrust = target_base_thrust;
     }else{
       std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 4, all_target_base_thrust.begin()+8};
+      assemble_base_thrust_sum_ = std::accumulate(target_base_thrust.begin(), target_base_thrust.end(), 0.0);
+      double sum_ratio = transThrustSumCalc(assemble_base_thrust_sum_, dessemble_base_thrust_sum_);
+      // ROS_INFO("ratio is %f", sum_ratio);
+      for(int i = 0; i<4; i++)
+        {
+          target_base_thrust[i] = target_base_thrust[i] * sum_ratio;
+        }
       flight_command_data.base_thrust = target_base_thrust;
     }
+
     flight_cmd_pub_.publish(flight_command_data);
 
     // send command for once
@@ -149,7 +168,15 @@ void AssembleController::sendCmd(){
     flight_command_data.angles[0] = dessemble_mode_controller_->getTargetRoll();
     flight_command_data.angles[1] = dessemble_mode_controller_->getTargetPitch();
     flight_command_data.angles[2] = dessemble_mode_controller_->getCandidateYawTerm();
-    flight_command_data.base_thrust = dessemble_mode_controller_->getTargetBaseThrust();
+    auto target_base_thrust = dessemble_mode_controller_->getTargetBaseThrust();
+    dessemble_base_thrust_sum_ = std::accumulate(target_base_thrust.begin(), target_base_thrust.end(), 0.0);
+    double sum_ratio = transThrustSumCalc(dessemble_base_thrust_sum_, assemble_base_thrust_sum_);
+    // ROS_INFO("ratio is %f", sum_ratio);
+    for(int i = 0; i<4; i++)
+      {
+        target_base_thrust[i] = target_base_thrust[i] * sum_ratio;
+      }
+    flight_command_data.base_thrust = target_base_thrust;
     flight_cmd_pub_.publish(flight_command_data);
 
     // send command for once

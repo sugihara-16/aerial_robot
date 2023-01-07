@@ -38,7 +38,7 @@
 #include <hydrus/hydrus_tilted_lqi_controller.h>
 #include <aerial_robot_control/control/fully_actuated_controller.h>
 #include <assemble_quadrotors/model/assemble_robot_model.h>
-
+#include <numeric>
 namespace aerial_robot_control
 {
   class AssembleController: public FullyActuatedController
@@ -67,9 +67,19 @@ namespace aerial_robot_control
   private:
     void sendCmd() override;
     void transMassCalc(double true_mass){
-      mass_trans_= true_mass * (1-1/(mass_trans_count_ - 1/(trans_rate_ -1)));
+      mass_trans_= true_mass * (1.0-1.0/(mass_trans_count_ - 1.0/(trans_rate_ -1.0)));
+    }
+    double transThrustSumCalc(double now_sum, double pre_sum){
+      double sum_ratio;
+      double rate;
+      rate = 1.0-6.0/(2.0*mass_trans_count_ + 6.0 );
+      ROS_INFO("rate is %f", rate);
+      sum_ratio= (rate * now_sum + (1 - rate) * pre_sum)/ now_sum;
+      return sum_ratio;
     }
     bool current_assemble_;
+    double assemble_base_thrust_sum_;
+    double dessemble_base_thrust_sum_;
 
     boost::shared_ptr<HydrusTiltedLQIController> dessemble_mode_controller_;
     boost::shared_ptr<FullyActuatedController> assemble_mode_controller_;

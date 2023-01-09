@@ -77,15 +77,15 @@ class DessembleDemo():
                 nav_msg_male.target = 1
                 nav_msg_male.control_frame = 1
                 nav_msg_male.pos_xy_nav_mode=2
-                nav_msg_male.target_pos_x = self.male_now_pos_x
-                nav_msg_male.target_pos_y = self.male_now_pos_y
+                nav_msg_male.target_pos_x = -1.5
+                nav_msg_male.target_pos_y = 0.0
                 #female
                 nav_msg_female = FlightNav()
                 nav_msg_female.target = 1
                 nav_msg_female.control_frame = 1
                 nav_msg_female.pos_xy_nav_mode=2
-                nav_msg_female.target_pos_x = self.female_now_pos_x
-                nav_msg_female.target_pos_y = self.female_now_pos_y
+                nav_msg_female.target_pos_x = 0.0
+                nav_msg_female.target_pos_y = 0.0
                 self.male_velo_pub.publish(nav_msg_male)
                 self.female_velo_pub.publish(nav_msg_female)
                 rospy.loginfo("DESSEMBLE FUNCTION DONE")

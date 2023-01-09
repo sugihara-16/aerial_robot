@@ -53,9 +53,11 @@ namespace aerial_robot_navigation
   protected:
     boost::shared_ptr<AssembleTiltedRobotModel> assemble_robot_model_;
     void switchingAircraftCallback(const std_msgs::Empty& msg);
+    void joyStickControl(const sensor_msgs::JoyConstPtr & joy_msg) override;
 
   private:
     ros::Subscriber switching_flag_sub_;
+    std::string airframe_;
 
 
   };

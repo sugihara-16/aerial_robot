@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+  ###########  joy node  ###########
+  <node name="circle1" pkg="assemble_quadrotors" type="circle_assemble.py" output = "screen">
+    <param name="robot_ns" value="assemble_quadrotors1" />
+  </node>
+
+  <node name="circle2" pkg="assemble_quadrotors" type="circle_assemble.py" output = "screen">
+    <param name="robot_ns" value="assemble_quadrotors2" />
+  </node>
+
+
+</launch>

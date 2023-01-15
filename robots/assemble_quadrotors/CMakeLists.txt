@@ -37,6 +37,9 @@ catkin_package(
 add_executable(optimal_design_node src/optimal_design.cpp)
 target_link_libraries(optimal_design_node ${catkin_LIBRARIES} ${NLOPT_LIBRARIES})
 
+add_executable(optimal_thrust_node src/optimal_thrust.cpp)
+target_link_libraries(optimal_thrust_node ${catkin_LIBRARIES} ${NLOPT_LIBRARIES})
+
 add_library(assemble_mocap_pluginlib src/sensor/mocap.cpp)
 target_link_libraries(assemble_mocap_pluginlib ${catkin_LIBRARIES})
 add_dependencies(assemble_mocap_pluginlib aerial_robot_msgs_generate_messages_cpp spinal_generate_messages_cpp)

@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="optimal_thrust" pkg="assemble_quadrotors" type="optimal_thrust_node" output="screen" >
+    <param name="target_axis" value="0"/>
+  </node>
+</launch>

@@ -44,6 +44,7 @@
 #include <tf/transform_datatypes.h>
 #include <numeric>
 #include <vector>
+#include <string>
 
 class OptimalDesign
 {
@@ -52,6 +53,7 @@ public:
   ~OptimalDesign() {}
 
   // unit configurable parameters
+
   int unit_rotor_num_; // rotor number per unit
   double unit_mass_; // mass per unit
   int units_num_; // nubmer of units
@@ -61,6 +63,7 @@ public:
   double fc_f_min_weight_, fc_t_min_weight_;
   bool test_mode_;
   bool unit_mode_;
+  int target_axis_;
   std::vector<double> test_x_;
 
   ros::Publisher visualize_pub_;

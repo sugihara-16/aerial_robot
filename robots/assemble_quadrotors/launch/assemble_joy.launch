@@ -4,7 +4,7 @@
   <node name="joy_node" pkg="joy" type="joy_node" output = "screen"/>
 
   ###########  assemble mode navigation  ###########
-  <node name="assemble_joy" pkg="assemble_quadrotors" type="assemble_joy.py" output="screen"/>
+  <node name="assemble_joy" pkg="assemble_quadrotors" type="assemble_joy2.py" output="screen"/>
 
 
 </launch>

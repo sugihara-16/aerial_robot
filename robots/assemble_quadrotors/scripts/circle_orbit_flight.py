@@ -12,7 +12,8 @@ class CircleObit():
     def __init__(self):
         rospy.init_node('pidControl')
         rospy.loginfo('activate')
-        self.flight_nav_pub = rospy.Publisher('/assemble_quadrotors/uav/nav',FlightNav , queue_size = 1)
+        self.flight_nav_pub = rospy.Publisher('/assemble_quadrotors1/uav/nav',FlightNav , queue_size = 1)
+        self.flight_nav_pub_female = rospy.Publisher('/assemble_quadrotors2/uav/nav',FlightNav , queue_size = 1)
         self.roll_pitch_pub = rospy.Publisher('/assemble_quadrotors/uav/roll_pitch_nav',RollPitchNav , queue_size = 1)
         self.r = 0.5
         self.omega = math.radians(12.0)
@@ -41,17 +42,17 @@ class CircleObit():
             self.target_yaw = self.target_theta + math.pi/2.0
             #set nav_msg's contents
             nav_msg.pos_xy_nav_mode = 2
-            nav_msg.yaw_nav_mode = 2
+            nav_msg.target = 1
             nav_msg.control_frame = 1
             nav_msg.pos_xy_nav_mode= 2
             nav_msg.target_pos_x = self.target_x
             nav_msg.target_pos_y = self.target_y
-            # nav_msg.target_yaw = self.target_yaw
             self.flight_nav_pub.publish(nav_msg)
+            self.flight_nav_pub_female.publish(nav_msg)
             #set roll_pitch_msg's contentse
-            roll_pitch_msg.target_pitch = self.target_pitch
-            roll_pitch_msg.target_roll = self.target_roll
-            self.roll_pitch_pub.publish(roll_pitch_msg)
+            # roll_pitch_msg.target_pitch = self.target_pitch
+            # roll_pitch_msg.target_roll = self.target_roll
+            # self.roll_pitch_pub.publish(roll_pitch_msg)
             r.sleep()
 if __name__=="__main__":
     try:

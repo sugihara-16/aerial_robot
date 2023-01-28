@@ -122,15 +122,15 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <mass value = "2.50834021" />
-      <origin xyz="0.00140155 -0.00021569 0.00055126" rpy="0 0 0"/>
+      <mass value = "2.492" />
+      <origin xyz="0.002 0.000 0.000" rpy="0 0 0"/>
       <inertia
-          ixx="0.01384106" ixy="0.00076195" ixz="-0.00011842"
-          iyy="0.12795959" iyz="0.00001926"
-          izz="0.13596145"/>
+          ixx="0.013" ixy="0.001" ixz="0.00"
+          iyy="0.133" iyz="0.000"
+          izz="0.14"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 3.141592" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_dual_quadrotors_magnet_male.STL"/>
       </geometry>
@@ -147,7 +147,7 @@
   <xacro:extra_module name = "fc" parent = "main_body" visible = "0" >
     <origin xyz="-0.22 0.0 0.0165" rpy="0 0 0"/>
     <inertial>
-      <mass value = "0.05" />
+      <mass value = "0.013" />
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertia
           ixx="0.00001" ixy="0.0" ixz="0.0"

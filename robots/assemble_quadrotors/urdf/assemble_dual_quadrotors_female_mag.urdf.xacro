@@ -122,18 +122,12 @@
   <!-- main_body -->
   <link name="main_body">
     <inertial>
-      <!-- <mass value = "1.427857" /> -->
-      <!-- <origin xyz="-0.00884209 -0.00096336 -0.00122007 " rpy="0 0 0"/> -->
-      <!-- <inertia -->
-      <!--     ixx="0.00716924" ixy="0.00006933" ixz="-0.00025713" -->
-      <!--     iyy="0.01398491" iyz="-0.00005390" -->
-      <!--     izz="0.01819428"/> -->
-      <mass value = "1.23" />
-      <origin xyz="-0.00209 -0.00158 0.00106 " rpy="0 0 0"/>
+      <mass value = "1.244" />
+      <origin xyz="-0.00452 -0.00138 0.0001977 " rpy="0 0 0"/>
       <inertia
-          ixx="0.00624" ixy="0.0000176" ixz="-0.000470"
-          iyy="0.0133" iyz="-0.0000457"
-          izz="0.0168"/>
+          ixx="0.00634" ixy="-0.0000162" ixz="-0.000522"
+          iyy="0.0146" iyz="-0.0000500"
+          izz="0.0183"/>
 
     </inertial>
     <visual>
@@ -152,9 +146,9 @@
 
   <!-- spinal -->
   <xacro:extra_module name = "fc" parent = "main_body" visible = "0" >
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="-0.02 0 0" rpy="0 0 0"/>
     <inertial>
-      <mass value = "0.05" />
+      <mass value = "0.013" />
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertia
           ixx="0.00001" ixy="0.0" ixz="0.0"

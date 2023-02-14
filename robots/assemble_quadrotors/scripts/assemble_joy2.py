@@ -32,7 +32,7 @@ class AssembleJoy():
         self.first_time_flag = True
         self.pos_sub_flag = True
         self.arming_flag = False
-        self.takeoff_hight = 0.5
+        self.takeoff_hight = 1.0
         self.male_flight_state = 0
         self.female_flight_state = 0
         self.male_now_pos_x = 0
@@ -52,7 +52,7 @@ class AssembleJoy():
         self.target_pos_z = self.takeoff_hight
         self.target_vel_z = 0
         self.target_omega = 0
-        self.target_yaw = 3.14
+        self.target_yaw = 0
 
         self.joy_sub = rospy.Subscriber('joy', Joy, self.joyCallback)
         self.male_mocap_sub = rospy.Subscriber(self.male_robot_ns+'/mocap/pose', PoseStamped, self.malePoseCallback)
@@ -93,7 +93,8 @@ class AssembleJoy():
        quaternion = [msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w]
        euler = tf.transformations.euler_from_quaternion(quaternion)
        self.male_now_yaw = euler[2]
-       self.pos_sub_flag = False
+       if(self.male_now_pos_x is not 0):
+           self.pos_sub_flag = False
     def femalePoseCallback(self,msg):
        self.female_now_pos_x= msg.pose.position.x
        self.female_now_pos_y= msg.pose.position.y
@@ -176,15 +177,18 @@ class AssembleJoy():
             self.target_yaw = self.male_now_yaw
 
         if(self.nav_mode == 1):#L-horizon: x velocity, L-vertical: y velocity, R-horizon:yaw
-            self.target_pos_y += 0.001*axes[1]
-            self.target_pos_x += 0.001*axes[0]
+            self.target_pos_y += 0.004*axes[1]
+            self.target_pos_x += -0.004*axes[0]
+            self.target_pos_z += 0.001*buttons[6] -0.001*buttons[7]
+            self.target_yaw += 0.01 * axes[3]
+        else:
             self.target_pos_z += 0.001*buttons[6] -0.001*buttons[7]
             self.target_yaw += 0.01 * axes[3]
 
     def main(self):
         while(self.pos_sub_flag):
             a = 1
-        if(self.male_flight_state is 3):
+        if((self.male_flight_state is 3 or self.male_flight_state is 4 or self.male_flight_state is 5) and self.first_time_flag):
             self.target_pos_x = self.male_now_pos_x
             self.target_pos_y = self.male_now_pos_x
             self.target_yaw = self.male_now_yaw

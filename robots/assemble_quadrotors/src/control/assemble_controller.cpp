@@ -74,8 +74,6 @@ bool AssembleController::update(){
       navigator_->setTargetXyFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
       // set current errI and ITerm for gravity compensation
-      // double current_ITerm = dessemble_mode_controller_->getCurrentZITerm();
-      // assemble_mode_controller_->setCurrentZITerm(current_ITerm);
       double current_ErrZ = dessemble_mode_controller_->getCurrentZErrI();
       assemble_mode_controller_->setCurrentZErrI(current_ErrZ);
     }
@@ -90,8 +88,6 @@ bool AssembleController::update(){
       navigator_->setTargetXyFromCurrentState();
       navigator_->setTargetYawFromCurrentState();
       // set current errI for gravity compensation
-      // double current_ITerm = assemble_mode_controller_->getCurrentZITerm();
-      // dessemble_mode_controller_->setCurrentZITerm(current_ITerm);
       double current_ErrZ = assemble_mode_controller_->getCurrentZErrI();
       dessemble_mode_controller_->setCurrentZErrI(current_ErrZ);
     }
@@ -104,7 +100,7 @@ void AssembleController::sendCmd(){
   if(assemble_robot_model_->isAssemble()){
     assemble_mode_controller_->PoseLinearController::sendCmd();
     spinal::FourAxisCommand flight_command_data;
-    flight_command_data.angles[0] = navigator_->getTargetRPY().x(); //probrem
+    flight_command_data.angles[0] = navigator_->getTargetRPY().x();
     flight_command_data.angles[1] = navigator_->getTargetRPY().y();
     flight_command_data.angles[2] = assemble_mode_controller_->getCandidateYawTerm() ;
     // choose correct 4 elements
@@ -178,8 +174,6 @@ void AssembleController::sendCmd(){
       }
     flight_command_data.base_thrust = target_base_thrust;
     flight_cmd_pub_.publish(flight_command_data);
-
-    // send command for once
 
     // send LQI gain
     dessemble_mode_controller_->publishGain();

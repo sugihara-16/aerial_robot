@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package>
+  <name>trady</name>
+  <version>1.3.0</version>
+  <description>The trady package</description>
+  
+  <maintainer email="j-sugihara@jsk.imi.i.u-tokyo.ac.jp"></maintainer>
+  <license>BSD</license>
+  <url type="website">https://github.com/JSKAerialRobot/aerial_robot</url>
+  <author email="j-sugihara@jsk.imi.i.u-tokyo.ac.jp">Junichiro Sugihara</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>aerial_robot_control</run_depend>
+  <run_depend>aerial_robot_model</run_depend>
+  <run_depend>aerial_robot_estimation</run_depend>
+
+</package>

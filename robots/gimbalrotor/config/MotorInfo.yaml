@@ -30,3 +30,8 @@ motor_info:
                 polynominal2: 0.071758366 # x10
                 polynominal1: -6.346135548 # x10
                 polynominal0: 13.2669467083 # x1
+
+        # for simualtion
+        rotor_damping_rate: 0.1
+        rotor_force_noise: 0
+        dual_rotor_moment_noise: 0

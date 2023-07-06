@@ -7,11 +7,11 @@
     <link name="root">
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.00001"/>
+        <mass value="0.0001"/>
         <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.000001" iyz="0.0"
-            izz="0.000001"/>
+            ixx="0.0001" ixy="0.0" ixz="0.0"
+            iyy="0.0001" iyz="0.0"
+            izz="0.0002"/>
       </inertial>
     </link>
     <joint name="root_joint" type="fixed">
@@ -27,11 +27,11 @@
         <origin xyz="-0.0081803 0.0 0.1184962" rpy="0 0 0"/>
         <mass value="1.82"/>
         <inertia
-            ixx="0.0511797" iyy="0.0835848" izz="0.1010814"
-            ixy="-0.0000001" ixz="-0.0015934" iyz="0.0000027"/>
+            ixx="0.05" iyy="0.08" izz="0.10"
+            ixy="0.0" ixz="0.0" iyz="0.0"/>
       </inertial>   
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 0 0" rpy="0 0 3.141592"/>
         <geometry>
           <mesh filename="package://gimbalrotor/urdf/quad/mesh/base_link.dae"/>
         </geometry>
@@ -49,11 +49,11 @@
     <link name="fc">
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.00001"/>
+        <mass value="0.0001"/>
         <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.000001" iyz="0.0"
-            izz="0.000001"/>
+            ixx="0.0001" ixy="0.0" ixz="0.0"
+            iyy="0.0001" iyz="0.0"
+            izz="0.0002"/>
       </inertial>
     </link>
     <joint name="fc_joint" type="fixed">
@@ -67,11 +67,11 @@
     <link name="rotor_arm${child1}">
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.0001"/>
+        <mass value="0.1"/>
         <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.0001" iyz="0.0"
-            izz="0.0001"/>
+            ixx="0.001" ixy="0.0" ixz="0.0"
+            iyy="0.001" iyz="0.0"
+            izz="0.002"/>
       </inertial>
     </link>
     <joint name="base_arm_joint${child1}" type="fixed">
@@ -83,12 +83,12 @@
 
     <link name="rotor_arm${child2}">
       <inertial>
-        <origin xyz="0.0486 0 0.0161" rpy="0 0 0"/>
-        <mass value="0.0001"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
         <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.0001" iyz="0.0"
-            izz="0.0001"/>
+            ixx="0.001" ixy="0.0" ixz="0.0"
+            iyy="0.001" iyz="0.0"
+            izz="0.002"/>
       </inertial>
     </link>
     <joint name="base_arm_joint${child2}" type="fixed">
@@ -100,12 +100,12 @@
 
     <link name="rotor_arm${child3}">
       <inertial>
-        <origin xyz="0.0486 0 0.0161" rpy="0 0 0"/>
-        <mass value="0.0001"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
         <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.0001" iyz="0.0"
-            izz="0.0001"/>
+            ixx="0.001" ixy="0.0" ixz="0.0"
+            iyy="0.001" iyz="0.0"
+            izz="0.002"/>
       </inertial>
     </link>
     <joint name="base_arm_joint${child3}" type="fixed">
@@ -117,12 +117,12 @@
 
     <link name="rotor_arm${child4}">
       <inertial>
-        <origin xyz="0.0486 0 0.0161" rpy="0 0 0"/>
-        <mass value="0.0001"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="0.1"/>
         <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.0001" iyz="0.0"
-            izz="0.0001"/>
+            ixx="0.001" ixy="0.0" ixz="0.0"
+            iyy="0.001" iyz="0.0"
+            izz="0.002"/>
       </inertial>
     </link>
     <joint name="base_arm_joint${child4}" type="fixed">
@@ -143,8 +143,8 @@
         <origin xyz="0.02284089 0.0 0.00720578" rpy="0 0 0"/>
         <mass value="0.1333"/>
         <inertia
-            ixx="0.00005310" iyy="0.00005269" izz="0.00005333"
-            ixy="-0.00000001" ixz="0.00000064" iyz="0.00000"/>
+            ixx="0.0005" iyy="0.0005" izz="0.0005"
+            ixy="0" ixz="0" iyz="0.0"/>
       </inertial>
       <collision>
         <origin xyz="0.0 0 0" rpy="0 0 0"/>
@@ -161,27 +161,15 @@
     </link>
     <xacro:damping_factor link="gimbal_link${self}"/>
 
-    ## rotor parent link (virtual)
-    <link name="rotor_parent${self}">
-      <inertial>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.00001"/>
-        <inertia
-            ixx="0.000001" ixy="0.0" ixz="0.0"
-            iyy="0.000001" iyz="0.0"
-            izz="0.000001"/>
-      </inertial>
-    </link>
-
     ## thrust link (virtual)
     <link name="thrust${self}">
       <inertial>
         <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="0.00001"/>
+        <mass value="0.01"/>
         <inertia
             ixx="0.001" ixy="0.0" ixz="0.0"
             iyy="0.001" iyz="0.0"
-            izz="0.001"/>
+            izz="0.002"/>
       </inertial>
     </link>
     <xacro:damping_factor link="thrust${self}"/>
@@ -208,22 +196,16 @@
         <mechanicalReduction>1</mechanicalReduction>
       </actuator>
     </transmission>
-    #### rotor parent link joint (virtual) ####
-    <joint name="rotor_parent_link_joint${self}" type="fixed">
-      <parent link="gimbal_link${self}"/>
-      <child link="rotor_parent${self}"/>
-      <origin rpy="0 0 0" xyz="0.018 0.00 0.00438"/>
-      <axis xyz="0 0 ${rotor_direction}"/>
-    </joint>
 
     #### rotor joint (virtual) ####
     <joint name="rotor${self}" type="continuous">
       <limit effort="100.0" lower="${min_force}" upper="${max_force}" velocity="0.5"/>
-      <parent link="rotor_parent${self}"/>
+      <parent link="gimbal_link${self}"/>
       <child link="thrust${self}"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.018 0.00 0.00438"/>
       <axis xyz="0 0 ${rotor_direction}"/>
     </joint>
+
 
     <transmission name="rotor_tran${self}">
       <type>transmission_interface/SimpleTransmission</type>

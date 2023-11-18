@@ -54,7 +54,7 @@ class aprilPIDcontroller():
         
     def callback(self,data):
 
-        if data:
+        if data.detections:
             #set values to current pose
             self.lastDistance = self.currentDistance
             self.tag_lost_flag = False

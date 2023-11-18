@@ -28,15 +28,15 @@ class aprilPIDcontroller():
         #err, Vel
         self.err_i = np.array([0.0, 0.0, 0.0])
         self.vel = np.array([0.0, 0.0, 0.0])
-        self.lastVel = np.array([0.0, 0.0 ,0.0])
         self.error = np.array([0.0, 0.0, 0.0])
         self.pre_error = np.array([0.0, 0.0, 0.0])
 
         #target distance
         self.targetDistance = np.array([0.0, 0.0, 1.0])
         
-        #current distance
+        #distance
         self.currentDistance = np.array([0.0, 0.0, 0.0])
+        self.lastDistance = np.array([0.0, 0.0, 0.0])
 
         #ros
         self.pub = rospy.Publisher('/beetle1/uav/nav', FlightNav, queue_size=1)
@@ -53,18 +53,19 @@ class aprilPIDcontroller():
         self.pre_error = self.error
         
     def callback(self,data):
-        if(data):
-            hogehoge
+
+        if data:
+            #set values to current pose
+            self.lastDistance = self.currentDistance
             self.tag_lost_flag = False
         else:
             self.tag_lost_flag = True
-            hogehoge
-                
-        #set values to current pose
-        position =  data.detections[0].pose.pose.pose.position
-        # x = -y, y = -x, z = -z
-        self.currentDistance = [-position.y, -position.x, position.z]
-        
+            self.currentDistance = self.lastDistance
+            return
+        position = data.detections[0].pose.pose.pose.position
+        #x = -y, y = -x, z = -z
+        self.currentDistance = [-position.y, -position.x, -position.z]
+            
     def main(self):
         while not rospy.is_shutdown():
             #culc error
@@ -88,7 +89,9 @@ class aprilPIDcontroller():
             self.nav_msg.target_vel_z = self.vel[2]
             self.pub.publish(self.nav_msg)
 
-            rospy.loginfo(self.vel)
+            rospy.loginfo(self.currentDistance)
+            rospy.loginfo(self.tag_lost_flag)
+            #rospy.loginfo()
             self.rate.sleep()
             
 if __name__ == "__main__":

@@ -53,19 +53,16 @@ class aprilPIDcontroller():
         self.pre_error = self.error
         
     def callback(self,data):
-
-        if data:
+        if data.detections:
             #set values to current pose
+            position = data.detections[0].pose.pose.pose.position
+            self.currentDistance = [-position.y, -position.x, -position.z] #x = -y, y = -x, z = -z
             self.lastDistance = self.currentDistance
             self.tag_lost_flag = False
         else:
             self.tag_lost_flag = True
-            self.currentDistance = self.lastDistance
-            return
-        position = data.detections[0].pose.pose.pose.position
-        #x = -y, y = -x, z = -z
-        self.currentDistance = [-position.y, -position.x, -position.z]
-            
+            self.currentDistance = self.lastDistance            
+
     def main(self):
         while not rospy.is_shutdown():
             #culc error

@@ -32,7 +32,7 @@ class aprilPIDcontroller():
         self.pre_error = np.array([0.0, 0.0, 0.0])
 
         #target distance
-        self.targetDistance = np.array([0.0, 0.0, 1.0])
+        self.targetDistance = np.array([0.0, 0.0, 0.5])
         
         #distance
         self.currentDistance = np.array([0.0, 0.0, 0.0])
@@ -40,7 +40,7 @@ class aprilPIDcontroller():
 
         #ros
         self.pub = rospy.Publisher('/beetle1/uav/nav', FlightNav, queue_size=1)
-        self.sub = rospy.Subscriber('tag_detections', AprilTagDetectionArray, self.callback)
+        self.sub = rospy.Subscriber('/beetle1/tag_detections', AprilTagDetectionArray, self.callback)
         self.rate = rospy.Rate(40)
         self.nav_msg = FlightNav()
 
@@ -56,7 +56,7 @@ class aprilPIDcontroller():
         if data.detections:
             #set values to current pose
             position = data.detections[0].pose.pose.pose.position
-            self.currentDistance = [-position.y, -position.x, -position.z] #x = -y, y = -x, z = -z
+            self.currentDistance = [-position.y, -position.x, position.z] #x = -y, y = -x, z = -z
             self.lastDistance = self.currentDistance
             self.tag_lost_flag = False
         else:

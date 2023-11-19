@@ -32,10 +32,18 @@
     <mu2>0.1</mu2>
   </gazebo>
 
+  <gazebo reference="apriltag_1">
+    <material>Apriltag36_11_00000</material>
+  </gazebo>
+
+  <gazebo reference="apriltag_2">
+    <material>Apriltag36_11_00000</material>
+  </gazebo>
+  
   <!-- sensors -->
   <!-- 1. stereo camera: depth, color based on left camera -->
   <xacro:extra_module name = "downward_camera_frame" parent = "base_link">
-    <origin xyz="0.0 0.00 0.0" rpy="0 ${pi/2} 0"/>
+    <origin xyz="0.24 -0.32 0.18" rpy="0 0 0"/>
     <inertial>
       <mass value = "0.00001" />
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -95,6 +103,98 @@
       </plugin>
     </sensor>
   </gazebo>
+
+  <!-- tags -->
+  <joint name="apriltag_joint_1" type="fixed">
+    <parent link="base_link"/>
+    <child link="apriltag_1"/>
+    <origin rpy="0 ${pi/2.0} 0" xyz="0.27 0.33 0.18"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="apriltag_1">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.00001"/>
+      <inertia
+          ixx="0.000001" ixy="0.0" ixz="0.0"
+          iyy="0.000001" iyz="0.0"
+          izz="0.000001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+  	<box size="0.2 0.2 0.01"/>
+      </geometry>
+      <material name = "Apriltag36_11_00000"/>
+    </visual>
+  </link>
+  <joint name="tag_cover_joint_1" type="fixed">
+    <parent link="apriltag_1"/>
+    <child link="tag_cover_1"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.005"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="tag_cover_1">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.00001"/>
+      <inertia
+          ixx="0.000001" ixy="0.0" ixz="0.0"
+          iyy="0.000001" iyz="0.0"
+          izz="0.000001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+  	<box size="0.2 0.2 0.01"/>
+      </geometry>
+    </visual>
+  </link>
   
+  <joint name="apriltag_joint_2" type="fixed">
+    <parent link="base_link"/>
+    <child link="apriltag_2"/>
+    <origin rpy="0 ${pi/2.0} 0" xyz="-0.27 -0.33 0.18"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="apriltag_2">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.00001"/>
+      <inertia
+          ixx="0.000001" ixy="0.0" ixz="0.0"
+          iyy="0.000001" iyz="0.0"
+          izz="0.000001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+      <geometry>
+  	<box size="0.2 0.2 0.01"/>
+      </geometry>
+      <!-- <material name = "Apriltag36_11_00000"/> -->
+    </visual>
+  </link>
+  <joint name="tag_cover_joint_2" type="fixed">
+    <parent link="apriltag_2"/>
+    <child link="tag_cover_2"/>
+    <origin rpy="0 0 0" xyz="0 0 0.005"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="tag_cover_2">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.00001"/>
+      <inertia
+          ixx="0.000001" ixy="0.0" ixz="0.0"
+          iyy="0.000001" iyz="0.0"
+          izz="0.000001"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+  	<box size="0.2 0.2 0.01"/>
+      </geometry>
+    </visual>
+  </link>  
 
 </robot>

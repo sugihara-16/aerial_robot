@@ -26,7 +26,7 @@ class aprilPIDcontroller():
         self.d_term = np.array([0.0, 0.0, 0.0])
 
         #term corrector
-        self.TermCorrector = np.array([0.2, 2, 2])
+        self.TermCorrector = np.array([0.5, 1, 1])
         
         #position error
         self.err_i = np.array([0.0, 0.0, 0.0])

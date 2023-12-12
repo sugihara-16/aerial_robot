@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <?xml version="1.0"?>
 <launch>
   ###########  launch config  ###########
@@ -105,7 +107,7 @@
       <arg name="image_topic" value="image_raw" />
     </include>
   </group>
-    <rosparam command="load" file="$(find beetle)/config/apriltag/tags_bundle.yaml" ns="$(arg robot_ns)/apriltag_ros_continuous_node"/>
+  <rosparam command="load" file="$(find beetle)/config/apriltag/tags_bundle.yaml" ns="$(arg robot_ns)/apriltag_ros_continuous_node"/>
 
   
 </launch>

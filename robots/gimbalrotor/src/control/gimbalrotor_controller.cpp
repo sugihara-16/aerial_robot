@@ -22,13 +22,14 @@ namespace aerial_robot_control
     target_base_thrust_.resize(motor_num_ * 2);
     target_full_thrust_.resize(motor_num_);
     target_gimbal_angles_.resize(motor_num_, 0);
-
-    feedforward_wrench_acc_cog_term_ = Eigen::VectorXd::Zero(6);
+    integrated_map_inv_trans_.resize(motor_num_ * 2, 3);
+    integrated_map_inv_rot_.resize(motor_num_ * 2, 3);
 
     GimbalrotorController::rosParamInit();
 
     flight_cmd_pub_ = nh_.advertise<spinal::FourAxisCommand>("four_axes/command", 1);
-    gimbal_control_pub_ = nh_.advertise<sensor_msgs::JointState>("gimbals_ctrl", 1);
+    
+    if(! gimbal_calc_in_fc_) gimbal_control_pub_ = nh_.advertise<sensor_msgs::JointState>("gimbals_ctrl", 1);
     gimbal_state_pub_ = nh_.advertise<sensor_msgs::JointState>("joint_states", 1);
     target_vectoring_force_pub_ = nh_.advertise<std_msgs::Float32MultiArray>("debug/target_vectoring_force", 1);
     rpy_gain_pub_ = nh_.advertise<spinal::RollPitchYawTerms>("rpy/gain", 1);
@@ -48,6 +49,7 @@ namespace aerial_robot_control
     ros::NodeHandle control_nh(nh_, "controller");
     getParam<int>(control_nh, "gimbal_dof", gimbal_dof_, 1);
     getParam<bool>(control_nh, "gimbal_calc_in_fc", gimbal_calc_in_fc_, true);
+    getParam<bool>(control_nh, "i_term_rp_calc_in_pc", i_term_rp_calc_in_pc_, false);
   }
 
   bool GimbalrotorController::update()
@@ -72,16 +74,30 @@ namespace aerial_robot_control
                              pid_controllers_.at(Z).result());
     tf::Vector3 target_acc_cog = uav_rot.inverse() * target_acc_w;
     Eigen::VectorXd target_wrench_acc_cog = Eigen::VectorXd::Zero(6);
+    Eigen::VectorXd target_wrench_acc_cog_for_est = Eigen::VectorXd::Zero(6);
     target_wrench_acc_cog.head(3) = Eigen::Vector3d(target_acc_cog.x(), target_acc_cog.y(), target_acc_cog.z());
+    target_wrench_acc_cog_for_est.head(3) = Eigen::Vector3d(target_acc_cog.x(), target_acc_cog.y(), target_acc_cog.z());
 
-    double target_ang_acc_x = pid_controllers_.at(ROLL).result();
-    double target_ang_acc_y = pid_controllers_.at(PITCH).result();
-    double target_ang_acc_z = pid_controllers_.at(YAW).result();
-    target_wrench_acc_cog.tail(3) = Eigen::Vector3d(target_ang_acc_x, target_ang_acc_y, target_ang_acc_z);
-    //feedforward process
-    target_wrench_acc_cog += feedforward_wrench_acc_cog_term_;
-    
-    setTargetWrenchAccCog(target_wrench_acc_cog);
+    double target_ang_acc_x, target_ang_acc_y, target_ang_acc_z;
+    if(gimbal_calc_in_fc_ && i_term_rp_calc_in_pc_){
+      target_ang_acc_x = pid_controllers_.at(ROLL).getITerm();
+      target_ang_acc_y = pid_controllers_.at(PITCH).getITerm();
+      target_ang_acc_z = pid_controllers_.at(YAW).result();
+      target_wrench_acc_cog.tail(3) = Eigen::Vector3d(target_ang_acc_x, target_ang_acc_y, 0.0);
+    }else{
+      target_ang_acc_x = pid_controllers_.at(ROLL).result();
+      target_ang_acc_y = pid_controllers_.at(PITCH).result();
+      target_ang_acc_z = pid_controllers_.at(YAW).result();
+      target_wrench_acc_cog.tail(3) = Eigen::Vector3d(target_ang_acc_x, target_ang_acc_y, target_ang_acc_z);
+    }
+
+    double target_ang_acc_x_for_est = pid_controllers_.at(ROLL).result();
+    double target_ang_acc_y_for_est = pid_controllers_.at(PITCH).result();
+    double target_ang_acc_z_for_est = pid_controllers_.at(YAW).result();
+    target_wrench_acc_cog_for_est.tail(3) = Eigen::Vector3d(target_ang_acc_x_for_est, target_ang_acc_y_for_est, target_ang_acc_z_for_est);
+
+    setTargetWrenchAccCog(target_wrench_acc_cog_for_est);
+
     pid_msg_.roll.total.at(0) = target_ang_acc_x;
     pid_msg_.roll.p_term.at(0) = pid_controllers_.at(ROLL).getPTerm();
     pid_msg_.roll.i_term.at(0) = pid_controllers_.at(ROLL).getITerm();
@@ -148,12 +164,18 @@ namespace aerial_robot_control
     integrated_map_inv_rot_ = integrated_map_inv.rightCols(3);
     target_vectoring_f_trans_ = integrated_map_inv_trans_ * target_wrench_acc_cog.topRows(3);
     target_vectoring_f_rot_ = integrated_map_inv_rot_ * target_wrench_acc_cog.bottomRows(3); //debug
+    target_vectoring_f_ = target_vectoring_f_trans_ + target_vectoring_f_rot_;
     last_col = 0;
 
     /*  calculate target base thrust (considering only translational components)*/
     double max_yaw_scale = 0; // for reconstruct yaw control term in spinal
     for(int i = 0; i < motor_num_; i++){
-      Eigen::VectorXd f_i = target_vectoring_f_trans_.segment(last_col, 2);
+      Eigen::VectorXd f_i;
+      if(i_term_rp_calc_in_pc_){
+        f_i = target_vectoring_f_.segment(last_col, 2);
+      }else{
+        f_i = target_vectoring_f_trans_.segment(last_col, 2);
+      }
       target_base_thrust_.at(2*i) = f_i[0];
       target_base_thrust_.at(2*i+1) = f_i[1];
       // target_gimbal_angles_.at(i) = atan2(-f_i[0], f_i[1]);
@@ -188,16 +210,14 @@ namespace aerial_robot_control
         for(int i = 0; i < motor_num_; i++){
           gimbal_control_msg.position.push_back(target_gimbal_angles_.at(i));
         }
-        gimbal_control_pub_.publish(gimbal_control_msg);
-        
-        std_msgs::Float32MultiArray target_vectoring_force_msg;
-        for(int i = 0; i < target_vectoring_f_.size(); i++){
-          target_vectoring_f_ = target_vectoring_f_trans_ + target_vectoring_f_rot_;
-          target_vectoring_force_msg.data.push_back(target_vectoring_f_(i));
-        }
-        target_vectoring_force_pub_.publish(target_vectoring_force_msg);
-        
+        gimbal_control_pub_.publish(gimbal_control_msg); 
       }
+    std_msgs::Float32MultiArray target_vectoring_force_msg;
+    for(int i = 0; i < target_vectoring_f_.size(); i++){
+      target_vectoring_force_msg.data.push_back(target_vectoring_f_(i));
+    }
+    target_vectoring_force_pub_.publish(target_vectoring_force_msg);
+        
   }
 
   void GimbalrotorController::sendFourAxisCommand()
@@ -249,15 +269,27 @@ namespace aerial_robot_control
   {
     spinal::RollPitchYawTerms rpy_gain_msg; //for rosserial
     /* to flight controller via rosserial scaling by 1000 */
-    rpy_gain_msg.motors.resize(1);
-    rpy_gain_msg.motors.at(0).roll_p = pid_controllers_.at(ROLL).getPGain() * 1000;
-    rpy_gain_msg.motors.at(0).roll_i = pid_controllers_.at(ROLL).getIGain() * 1000;
-    rpy_gain_msg.motors.at(0).roll_d = pid_controllers_.at(ROLL).getDGain() * 1000;
-    rpy_gain_msg.motors.at(0).pitch_p = pid_controllers_.at(PITCH).getPGain() * 1000;
-    rpy_gain_msg.motors.at(0).pitch_i = pid_controllers_.at(PITCH).getIGain() * 1000;
-    rpy_gain_msg.motors.at(0).pitch_d = pid_controllers_.at(PITCH).getDGain() * 1000;
-    rpy_gain_msg.motors.at(0).yaw_d = pid_controllers_.at(YAW).getDGain() * 1000;
-    rpy_gain_pub_.publish(rpy_gain_msg);
+    if(i_term_rp_calc_in_pc_){
+      rpy_gain_msg.motors.resize(1);
+      rpy_gain_msg.motors.at(0).roll_p = pid_controllers_.at(ROLL).getPGain() * 1000;
+      rpy_gain_msg.motors.at(0).roll_i = 0;
+      rpy_gain_msg.motors.at(0).roll_d = pid_controllers_.at(ROLL).getDGain() * 1000;
+      rpy_gain_msg.motors.at(0).pitch_p = pid_controllers_.at(PITCH).getPGain() * 1000;
+      rpy_gain_msg.motors.at(0).pitch_i = 0;
+      rpy_gain_msg.motors.at(0).pitch_d = pid_controllers_.at(PITCH).getDGain() * 1000;
+      rpy_gain_msg.motors.at(0).yaw_d = pid_controllers_.at(YAW).getDGain() * 1000;
+      rpy_gain_pub_.publish(rpy_gain_msg);
+    }else{
+      rpy_gain_msg.motors.resize(1);
+      rpy_gain_msg.motors.at(0).roll_p = pid_controllers_.at(ROLL).getPGain() * 1000;
+      rpy_gain_msg.motors.at(0).roll_i = pid_controllers_.at(ROLL).getIGain() * 1000;
+      rpy_gain_msg.motors.at(0).roll_d = pid_controllers_.at(ROLL).getDGain() * 1000;
+      rpy_gain_msg.motors.at(0).pitch_p = pid_controllers_.at(PITCH).getPGain() * 1000;
+      rpy_gain_msg.motors.at(0).pitch_i = pid_controllers_.at(PITCH).getIGain() * 1000;
+      rpy_gain_msg.motors.at(0).pitch_d = pid_controllers_.at(PITCH).getDGain() * 1000;
+      rpy_gain_msg.motors.at(0).yaw_d = pid_controllers_.at(YAW).getDGain() * 1000;
+      rpy_gain_pub_.publish(rpy_gain_msg);
+    }
   }
 } //namespace aerial_robot_controller
 

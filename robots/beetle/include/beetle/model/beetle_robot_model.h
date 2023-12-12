@@ -6,7 +6,15 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/Point.h>
+#include <algorithm>
 using namespace aerial_robot_model;
+
+enum module_state
+  {
+   SEPARATED,
+   FOLLOWER,
+   LEADER
+  };
 
 class BeetleRobotModel : public GimbalrotorRobotModel{
 public:
@@ -20,6 +28,13 @@ public:
   template<class T> T getCog2Cp();
   template<class T> T getCog2CoM();
   bool getCurrentAssembled(){return current_assembled_;}
+  int getModuleState(){return module_state_;}
+  int getReconfigFlag(){return reconfig_flag_;}
+  int getMyID(){return my_id_;}
+  int getLeaderID(){return leader_id_;}
+  std::vector<int> getModuleIDs(){return assembled_modules_ids_;}
+  bool getControlFlag(){return control_flag_;}
+  
 
   void setContactFrame(const KDL::Frame contact_frame){contact_frame_ = contact_frame;}
   void setCog2Cp(const KDL::Frame Cog2Cp){Cog2Cp_ = Cog2Cp;}
@@ -27,7 +42,7 @@ public:
   void setAssemblyFlag(const int key, const bool value){
     assembly_flags_[key] = value;
   }
-  void setHoveringFlag(const bool hovering_flag){hovering_flag_ = hovering_flag;}
+  void setControlFlag(const bool control_flag){control_flag_ = control_flag;}
 
   std::map<int, bool> getAssemblyFlags(){return assembly_flags_;}
   int getMaxModuleNum(){return max_modules_num_;}
@@ -49,9 +64,14 @@ private:
   int max_modules_num_ = 4; //TODO: get the value from rosparam
   int pre_assembled_modules_;
   int my_id_;
+  int leader_id_;
   std::map<int, bool> assembly_flags_;
+  bool reconfig_flag_;
   bool current_assembled_;
-  bool hovering_flag_;
+  bool control_flag_;
+  std::vector<int> assembled_modules_ids_;
+  int module_state_;
+  
 
 protected:
   void updateRobotModelImpl(const KDL::JntArray& joint_positions) override;

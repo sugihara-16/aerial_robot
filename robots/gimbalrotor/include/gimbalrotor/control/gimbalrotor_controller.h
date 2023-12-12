@@ -23,22 +23,24 @@ namespace aerial_robot_control
                     boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
                     double ctrl_loop_rate
                     ) override;
-    void setTargetWrenchAccCog(Eigen::VectorXd target_wrench_acc_cog){
-      std::lock_guard<std::mutex> lock(wrench_mutex_);
-      target_wrench_acc_cog_ = target_wrench_acc_cog;
+    const Eigen::MatrixXd getIntegratedMapInvTrans() {
+      std::lock_guard<std::mutex> lock(trans_map_inv_mutex_);
+      return integrated_map_inv_trans_;
     }
-    Eigen::VectorXd getTargetWrenchAccCog(){
-      std::lock_guard<std::mutex> lock(wrench_mutex_);
-      return target_wrench_acc_cog_;
+    const Eigen::MatrixXd getIntegratedMapInvRot() {
+      std::lock_guard<std::mutex> lock(rot_map_inv_mutex_);
+      return integrated_map_inv_rot_;
     }
+
   private:
     std::mutex wrench_mutex_;
+    std::mutex trans_map_inv_mutex_;
+    std::mutex rot_map_inv_mutex_;
     
     ros::Publisher flight_cmd_pub_;
     ros::Publisher gimbal_control_pub_;
     ros::Publisher gimbal_state_pub_;
     ros::Publisher target_vectoring_force_pub_;
-    ros::Publisher rpy_gain_pub_; //for spinal
     ros::Publisher torque_allocation_matrix_inv_pub_; //for spinal
     ros::Publisher gimbal_dof_pub_; //for spinal
 
@@ -47,7 +49,6 @@ namespace aerial_robot_control
     std::vector<float> target_full_thrust_;
     std::vector<double> target_gimbal_angles_;
     bool hovering_approximate_;
-    Eigen::VectorXd target_wrench_acc_cog_;
     Eigen::VectorXd target_vectoring_f_;
     Eigen::VectorXd target_vectoring_f_trans_;
     Eigen::VectorXd target_vectoring_f_rot_;
@@ -55,7 +56,6 @@ namespace aerial_robot_control
     Eigen::MatrixXd integrated_map_inv_rot_;
     double candidate_yaw_term_;
     int gimbal_dof_;
-    bool gimbal_calc_in_fc_;
 
     bool update() override;
     virtual void reset() override;
@@ -63,10 +63,13 @@ namespace aerial_robot_control
     void sendFourAxisCommand();
     void sendGimbalCommand();
     void sendTorqueAllocationMatrixInv();
-    void setAttitudeGains();
   protected:
+    bool gimbal_calc_in_fc_;
+    bool i_term_rp_calc_in_pc_;
+    ros::Publisher rpy_gain_pub_; //for spinal
+    virtual void setAttitudeGains();
     virtual void rosParamInit();
     virtual void controlCore() override;
-    Eigen::VectorXd feedforward_wrench_acc_cog_term_;
+    Eigen::VectorXd additional_wrench_acc_cog_term_;
   };
 };

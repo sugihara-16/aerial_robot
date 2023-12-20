@@ -12,13 +12,37 @@ namespace aerial_robot_control
   }
 
   void BeetleController::initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
-                                         boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
-                                         boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
-                                         boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
-                                         double ctrl_loop_rate
-                                         )
+                                    boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
+                                    boost::shared_ptr<aerial_robot_estimation::StateEstimator> estimator,
+                                    boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
+                                    double ctrl_loop_rate
+                                    )
   {
     GimbalrotorController::initialize(nh, nhp, robot_model, estimator, navigator, ctrl_loop_rate);
+    wrench_pid_msg_.x.total.resize(1);
+    wrench_pid_msg_.x.p_term.resize(1);
+    wrench_pid_msg_.x.i_term.resize(1);
+    wrench_pid_msg_.x.d_term.resize(1);
+    wrench_pid_msg_.y.total.resize(1);
+    wrench_pid_msg_.y.p_term.resize(1);
+    wrench_pid_msg_.y.i_term.resize(1);
+    wrench_pid_msg_.y.d_term.resize(1);
+    wrench_pid_msg_.z.total.resize(1);
+    wrench_pid_msg_.z.p_term.resize(1);
+    wrench_pid_msg_.z.i_term.resize(1);
+    wrench_pid_msg_.z.d_term.resize(1);
+    wrench_pid_msg_.roll.total.resize(1);
+    wrench_pid_msg_.roll.p_term.resize(1);
+    wrench_pid_msg_.roll.i_term.resize(1);
+    wrench_pid_msg_.roll.d_term.resize(1);
+    wrench_pid_msg_.pitch.total.resize(1);
+    wrench_pid_msg_.pitch.p_term.resize(1);
+    wrench_pid_msg_.pitch.i_term.resize(1);
+    wrench_pid_msg_.pitch.d_term.resize(1);
+    wrench_pid_msg_.yaw.total.resize(1);
+    wrench_pid_msg_.yaw.p_term.resize(1);
+    wrench_pid_msg_.yaw.i_term.resize(1);
+    wrench_pid_msg_.yaw.d_term.resize(1);
 
     beetle_robot_model_ = boost::dynamic_pointer_cast<BeetleRobotModel>(robot_model);
     external_wrench_lower_limit_ = Eigen::VectorXd::Zero(6);
@@ -29,6 +53,7 @@ namespace aerial_robot_control
     tagged_external_wrench_pub_ = nh_.advertise<beetle::TaggedWrench>("tagged_wrench", 1);
     whole_external_wrench_pub_ = nh_.advertise<geometry_msgs::WrenchStamped>("whole_wrench", 1);
     internal_wrench_pub_ = nh_.advertise<geometry_msgs::WrenchStamped>("internal_wrench", 1);
+    wrench_comp_pid_pub_ = nh_.advertise<aerial_robot_msgs::PoseControlPid>("debug/wrench_comp/pid", 1);
     int max_modules_num = beetle_robot_model_->getMaxModuleNum();
     for(int i = 0; i < max_modules_num; i++){
       std::string module_name  = string("/beetle") + std::to_string(i+1);
@@ -37,15 +62,23 @@ namespace aerial_robot_control
       est_wrench_list_.insert(make_pair(i+1, wrench));
       inter_wrench_list_.insert(make_pair(i+1, wrench));
       wrench_comp_list_.insert(make_pair(i+1, wrench));
+      ff_inter_wrench_list_.insert(make_pair(i+1, wrench));
+      ff_inter_wrench_subs_.insert(make_pair(module_name, nh_.subscribe( module_name + string("/ff_inter_wrench"), 1, &BeetleController::ffInterWrenchCallback, this)));
     }
-    pid_controllers_.at(X).setLimitErrI(pid_controllers_.at(X).getLimitI() / pid_controllers_.at(X).getIGain());
-    pid_controllers_.at(Y).setLimitErrI(pid_controllers_.at(Y).getLimitI() / pid_controllers_.at(Y).getIGain());
-    pid_controllers_.at(Z).setLimitErrI(pid_controllers_.at(Z).getLimitI() / pid_controllers_.at(Z).getIGain());
-    pid_controllers_.at(ROLL).setLimitErrI(pid_controllers_.at(ROLL).getLimitI() / pid_controllers_.at(ROLL).getIGain());
-    pid_controllers_.at(PITCH).setLimitErrI(pid_controllers_.at(PITCH).getLimitI() / pid_controllers_.at(PITCH).getIGain());
-    pid_controllers_.at(YAW).setLimitErrI(pid_controllers_.at(YAW).getLimitI() / pid_controllers_.at(YAW).getIGain());
+    pid_controllers_.push_back(PID("f_x", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
+    pid_controllers_.push_back(PID("f_y", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
+    pid_controllers_.push_back(PID("f_z", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
+    pid_controllers_.push_back(PID("t_x", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
+    pid_controllers_.push_back(PID("t_y", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
+    pid_controllers_.push_back(PID("t_z", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
 
-    prev_comp_update_time_ = 0;
+    ros::NodeHandle control_nh(nh_, "controller");
+    ros::NodeHandle wrench_nh(control_nh, "wrench_comp");
+    std::vector<int> indices = {FX, FY, FZ, TX, TY, TZ};
+    pid_reconf_servers_.push_back(boost::make_shared<PidControlDynamicConfig>(wrench_nh));
+    pid_reconf_servers_.back()->setCallback(boost::bind(&BeetleController::cfgPidCallback, this, _1, _2, indices));
+
+    prev_comp_update_time_ = -1;
   }
 
   void BeetleController::controlCore()
@@ -56,15 +89,10 @@ namespace aerial_robot_control
     bool comp_update_flag = false;
     double comp_update_interval = 1  / comp_term_update_freq_;
     if(beetle_robot_model_->getControlFlag() &&
-       ros::Time::now().toSec() - prev_comp_update_time_ > comp_update_interval &&
        module_state != SEPARATED){
       calcInteractionWrench();
-      prev_comp_update_time_ = ros::Time::now().toSec();
       comp_update_flag = true;
-    }
-    
-    if(!beetle_robot_model_->getControlFlag() ||
-       module_state == SEPARATED){
+    }else{
       for(int i = 0; i < max_modules_num; i++){
         est_wrench_list_[i+1] = Eigen::VectorXd::Zero(6);
         inter_wrench_list_[i+1] = Eigen::VectorXd::Zero(6);
@@ -79,6 +107,21 @@ namespace aerial_robot_control
     if(module_state == FOLLOWER &&
        pd_wrench_comp_mode_ &&
        beetle_robot_model_->getControlFlag()){
+
+      /* set proper gains for wrench comp */
+      int module_num = 0;
+      for(const auto & item : est_wrench_list_){
+        if(assembly_flag[item.first]){
+          module_num ++;
+        }
+      }
+      std::vector<int> wrench_indices = {FX, FY, FZ, TX, TY, TZ};
+      for(const auto& index: wrench_indices)
+        {
+          pid_controllers_.at(index).setPGain(wrench_comp_p_gain_ / std::pow(2, module_num -2) );
+          pid_controllers_.at(index).setDGain(wrench_comp_d_gain_ / std::pow(2, module_num -2) );
+          pid_controllers_.at(index).setIGain(wrench_comp_i_gain_ / std::pow(2, module_num -2) );
+        }
       Eigen::VectorXd wrench_comp_term = wrench_comp_list_[my_id];
 
       /* current version: I term reconfig mehod */
@@ -93,12 +136,28 @@ namespace aerial_robot_control
       double IGain_Ty = pid_controllers_.at(PITCH).getIGain();
       double IGain_Tz = pid_controllers_.at(YAW).getIGain();
 
-      I_comp_Fx_ = I_reconfig_acc_cog_term(0) / IGain_Fx;
-      I_comp_Fy_ = I_reconfig_acc_cog_term(1) / IGain_Fy;
-      I_comp_Fz_ = I_reconfig_acc_cog_term(2) / IGain_Fz;
-      I_comp_Tx_ = I_reconfig_acc_cog_term(3) / IGain_Tx;
-      I_comp_Ty_ = I_reconfig_acc_cog_term(4) / IGain_Ty;
-      I_comp_Tz_ = I_reconfig_acc_cog_term(5) / IGain_Tz;
+      double du;
+      if(prev_comp_update_time_ < 0){
+        prev_comp_update_time_ = ros::Time::now().toSec();
+        return;
+      }else{
+        du = ros::Time::now().toSec() - prev_comp_update_time_;
+        prev_comp_update_time_ = ros::Time::now().toSec();
+      }
+
+      pid_controllers_.at(FX).updateWoVel(I_reconfig_acc_cog_term(0) / IGain_Fx, du);
+      pid_controllers_.at(FY).updateWoVel(I_reconfig_acc_cog_term(1) / IGain_Fy, du);
+      pid_controllers_.at(FZ).updateWoVel(I_reconfig_acc_cog_term(2) / IGain_Fz, du);
+      pid_controllers_.at(TX).updateWoVel(I_reconfig_acc_cog_term(3) / IGain_Tx, du);
+      pid_controllers_.at(TY).updateWoVel(I_reconfig_acc_cog_term(4) / IGain_Ty, du);
+      pid_controllers_.at(TZ).updateWoVel(I_reconfig_acc_cog_term(5) / IGain_Tz, du);
+
+      I_comp_Fx_ = pid_controllers_.at(FX).result();
+      I_comp_Fy_ = pid_controllers_.at(FY).result();
+      I_comp_Fz_ = pid_controllers_.at(FZ).result();
+      I_comp_Tx_ = pid_controllers_.at(TX).result();
+      I_comp_Ty_ = pid_controllers_.at(TY).result();
+      I_comp_Tz_ = pid_controllers_.at(TZ).result();
 
       pid_controllers_.at(X).setICompTerm(I_comp_Fx_);
       pid_controllers_.at(Y).setICompTerm(I_comp_Fy_);
@@ -117,27 +176,75 @@ namespace aerial_robot_control
       wrench_msg.wrench.torque.z = I_reconfig_acc_cog_term(5);
       external_wrench_compensation_pub_.publish(wrench_msg);
 
-    }else{
-      if(pre_module_state_ == FOLLOWER && module_state == SEPARATED)
-        {
-          pid_controllers_.at(X).setICompTerm(0.0);
-          pid_controllers_.at(Y).setICompTerm(0.0);
-          pid_controllers_.at(Z).setICompTerm(0.0);
-          pid_controllers_.at(ROLL).setICompTerm(0.0);
-          pid_controllers_.at(PITCH).setICompTerm(0.0);
-          pid_controllers_.at(YAW).setICompTerm(0.0);
+      /* publish wrench comp pid value*/
+      wrench_pid_msg_.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
+      wrench_pid_msg_.x.total.at(0) = pid_controllers_.at(FX).result();
+      wrench_pid_msg_.x.p_term.at(0) = pid_controllers_.at(FX).getPTerm();
+      wrench_pid_msg_.x.i_term.at(0) = pid_controllers_.at(FX).getITerm();
+      wrench_pid_msg_.x.d_term.at(0) = pid_controllers_.at(FX).getDTerm();
 
-          pid_controllers_.at(X).setErrI(pid_controllers_.at(X).getErrIRec());
-          pid_controllers_.at(Y).setErrI(pid_controllers_.at(Y).getErrIRec());
-          pid_controllers_.at(Z).setErrI(pid_controllers_.at(Z).getErrIRec());
-          pid_controllers_.at(ROLL).setErrI(pid_controllers_.at(ROLL).getErrIRec());
-          pid_controllers_.at(PITCH).setErrI(pid_controllers_.at(PITCH).getErrIRec());
-          pid_controllers_.at(YAW).setErrI(pid_controllers_.at(YAW).getErrIRec());
-        }
+      wrench_pid_msg_.y.total.at(0) = pid_controllers_.at(FY).result();
+      wrench_pid_msg_.y.p_term.at(0) = pid_controllers_.at(FY).getPTerm();
+      wrench_pid_msg_.y.i_term.at(0) = pid_controllers_.at(FY).getITerm();
+      wrench_pid_msg_.y.d_term.at(0) = pid_controllers_.at(FY).getDTerm();
+
+      wrench_pid_msg_.z.total.at(0) = pid_controllers_.at(FZ).result();
+      wrench_pid_msg_.z.p_term.at(0) = pid_controllers_.at(FZ).getPTerm();
+      wrench_pid_msg_.z.i_term.at(0) = pid_controllers_.at(FZ).getITerm();
+      wrench_pid_msg_.z.d_term.at(0) = pid_controllers_.at(FZ).getDTerm();
+      
+      wrench_pid_msg_.roll.total.at(0) = pid_controllers_.at(TX).result();
+      wrench_pid_msg_.roll.p_term.at(0) = pid_controllers_.at(TX).getPTerm();
+      wrench_pid_msg_.roll.i_term.at(0) = pid_controllers_.at(TX).getITerm();
+      wrench_pid_msg_.roll.d_term.at(0) = pid_controllers_.at(TX).getDTerm();
+
+      wrench_pid_msg_.pitch.total.at(0) = pid_controllers_.at(TY).result();
+      wrench_pid_msg_.pitch.p_term.at(0) = pid_controllers_.at(TY).getPTerm();
+      wrench_pid_msg_.pitch.i_term.at(0) = pid_controllers_.at(TY).getITerm();
+      wrench_pid_msg_.pitch.d_term.at(0) = pid_controllers_.at(TY).getDTerm();
+
+      wrench_pid_msg_.yaw.total.at(0) = pid_controllers_.at(TZ).result();
+      wrench_pid_msg_.yaw.p_term.at(0) = pid_controllers_.at(TZ).getPTerm();
+      wrench_pid_msg_.yaw.i_term.at(0) = pid_controllers_.at(TZ).getITerm();
+      wrench_pid_msg_.yaw.d_term.at(0) = pid_controllers_.at(TZ).getDTerm();
+
+      wrench_comp_pid_pub_.publish(wrench_pid_msg_);
+
+    }else{
+      pid_controllers_.at(FX).reset();
+      pid_controllers_.at(FY).reset();
+      pid_controllers_.at(FZ).reset();
+      pid_controllers_.at(TX).reset();
+      pid_controllers_.at(TY).reset();
+      pid_controllers_.at(TZ).reset();
+      pid_controllers_.at(X).setICompTerm(0.0);
+      pid_controllers_.at(Y).setICompTerm(0.0);
+      pid_controllers_.at(Z).setICompTerm(0.0);
+      pid_controllers_.at(ROLL).setICompTerm(0.0);
+      pid_controllers_.at(PITCH).setICompTerm(0.0);
+      pid_controllers_.at(YAW).setICompTerm(0.0);
     }
       
     GimbalrotorController::controlCore();
     pre_module_state_ = module_state;
+    
+  }
+
+  void BeetleController::reset()
+  {
+    GimbalrotorController::reset();
+    pid_controllers_.at(FX).reset();
+    pid_controllers_.at(FY).reset();
+    pid_controllers_.at(FZ).reset();
+    pid_controllers_.at(TX).reset();
+    pid_controllers_.at(TY).reset();
+    pid_controllers_.at(TZ).reset();
+    pid_controllers_.at(X).setICompTerm(0.0);
+    pid_controllers_.at(Y).setICompTerm(0.0);
+    pid_controllers_.at(Z).setICompTerm(0.0);
+    pid_controllers_.at(ROLL).setICompTerm(0.0);
+    pid_controllers_.at(PITCH).setICompTerm(0.0);
+    pid_controllers_.at(YAW).setICompTerm(0.0);
   }
 
   void BeetleController::calcInteractionWrench()
@@ -147,12 +254,14 @@ namespace aerial_robot_control
     Eigen::VectorXd W_sum = Eigen::VectorXd::Zero(6);
     int module_num = 0;
     std::map<int, bool> assembly_flag = beetle_robot_model_->getAssemblyFlags();
+
     for(const auto & item : est_wrench_list_){
       if(assembly_flag[item.first]){
-        W_sum += item.second;
-        module_num ++;
+      W_sum += item.second;
+      module_num ++;
       }
     }
+
     if(!module_num) return;
     W_w = W_sum / module_num;
     geometry_msgs::WrenchStamped wrench_msg;
@@ -191,8 +300,9 @@ namespace aerial_robot_control
     Eigen::VectorXd wrench_comp_sum_left = Eigen::VectorXd::Zero(6);
     for(int i = leader_id-1; i > 0; i--){
       if(assembly_flag[i]){
-        wrench_comp_sum_left += inter_wrench_list_[i];
-        wrench_comp_list_[i] += wrench_comp_gain_ *  wrench_comp_sum_left;
+        wrench_comp_sum_left += ff_inter_wrench_list_[i] + inter_wrench_list_[i];
+        // wrench_comp_list_[i] += wrench_comp_gain_ *  wrench_comp_sum_left;
+        wrench_comp_list_[i] = wrench_comp_sum_left;
         right_module_id = i;
       }else{
         wrench_comp_list_[i] = Eigen::VectorXd::Zero(6);
@@ -202,10 +312,11 @@ namespace aerial_robot_control
     int max_modules_num = beetle_robot_model_->getMaxModuleNum();
     int left_module_id = leader_id;
     Eigen::VectorXd wrench_comp_sum_right = Eigen::VectorXd::Zero(6);
-    for(int i = leader_id+1; i < max_modules_num; i++){
+    for(int i = leader_id+1; i <= max_modules_num; i++){
       if(assembly_flag[i]){
-        wrench_comp_sum_right -= inter_wrench_list_[left_module_id];
-        wrench_comp_list_[i] += wrench_comp_gain_ * wrench_comp_sum_right;
+        wrench_comp_sum_right -= -ff_inter_wrench_list_[left_module_id] + inter_wrench_list_[left_module_id];
+        // wrench_comp_list_[i] += wrench_comp_gain_ * wrench_comp_sum_right;
+        wrench_comp_list_[i] = wrench_comp_sum_right;
         left_module_id = i;
       }else{
         wrench_comp_list_[i] = Eigen::VectorXd::Zero(6);
@@ -231,7 +342,11 @@ namespace aerial_robot_control
     ROS_INFO_STREAM("lower limit of external wrench : "<<external_wrench_lower_limit_.transpose());
 
     getParam<double>(control_nh, "comp_term_update_freq", comp_term_update_freq_, 10);
-    getParam<double>(control_nh, "wrench_comp_gain", wrench_comp_gain_, 0.2);
+
+    ros::NodeHandle wrench_nh(control_nh, "wrench_comp");
+    getParam<double>(wrench_nh, "p_gain", wrench_comp_p_gain_, 0.1);
+    getParam<double>(wrench_nh, "i_gain", wrench_comp_i_gain_, 0.005);
+    getParam<double>(wrench_nh, "d_gain", wrench_comp_d_gain_, 0.07);
   }
 
   void BeetleController::externalWrenchEstimate()
@@ -240,7 +355,7 @@ namespace aerial_robot_control
 
     if(navigator_->getNaviState() != aerial_robot_navigation::HOVER_STATE &&
        navigator_->getNaviState() != aerial_robot_navigation::TAKEOFF_STATE &&
-       navigator_->getNaviState() != aerial_robot_navigation::LAND_STATE)
+       navigator_->getNaviState() != aerial_robot_navigation:: LAND_STATE)
       {
         prev_est_wrench_timestamp_ = 0;
         integrate_term_ = Eigen::VectorXd::Zero(6);
@@ -322,6 +437,21 @@ namespace aerial_robot_control
     wrench(4) =  wrench_msg.torque.y;
     wrench(5) =  wrench_msg.torque.z;
     est_wrench_list_[id] = wrench;
+  }
+
+  void BeetleController::ffInterWrenchCallback(const beetle::TaggedWrench & msg)
+  {
+    int id = msg.index;
+    geometry_msgs::Wrench wrench_msg = msg.wrench.wrench;
+    double time_stamp = msg.wrench.header.stamp.toSec();
+    Eigen::VectorXd wrench = Eigen::VectorXd::Zero(6);
+    wrench(0) =  wrench_msg.force.x;
+    wrench(1) =  wrench_msg.force.y;
+    wrench(2) =  wrench_msg.force.z;
+    wrench(3) =  wrench_msg.torque.x;
+    wrench(4) =  wrench_msg.torque.y;
+    wrench(5) =  wrench_msg.torque.z;
+    ff_inter_wrench_list_[id] = wrench;
   }
 
 } //namespace aerial_robot_controller

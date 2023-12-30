@@ -13,9 +13,9 @@ class aprilPIDcontroller():
         # parameter's for PID control
 
         #position gains
-        self.kp = -1.0
-        self.ki = -0.001
-        self.kd = -0.05
+        self.kp = -0.2
+        self.ki = -0.0002
+        self.kd = -0.01
 
         #duration
         self.dt = 0.025
@@ -47,7 +47,7 @@ class aprilPIDcontroller():
         self.lastEuler = np.array([0.0, 0.0, 0.0])
 
         #distance
-        self.targetDistance = np.array([0.08171, -0.01239, 0.01017]) #offset
+        self.targetDistance = np.array([1.08171, -0.01239, 0.01017]) #x offset = 1.58171
         self.currentDistance = np.array([0.0, 0.0, 0.0])
         self.lastDistance = np.array([0.0, 0.0, 0.0])
         self.currentEucDistance = 0
@@ -57,14 +57,14 @@ class aprilPIDcontroller():
         self.sub = rospy.Subscriber('/beetle1/tag_detections', AprilTagDetectionArray, self.callback1)
         self.yaw_sub = rospy.Subscriber('/beetle1/mocap/pose', PoseStamped, self.callback2)
 
-        #boolean for docking
-        self.docking_msg = Bool()
-        self.docking_pub = rospy.Publisher('/beetle1/docking_cmd', Bool, queue_size=1)
+        # #boolean for docking
+        # self.docking_msg = Bool()
+        # self.docking_pub = rospy.Publisher('/beetle1/docking_cmd', Bool, queue_size=1)
         
-        #flags for docking
-        self.flag_msg = KeyValue()
-        self.flag_pub_1 = rospy.Publisher('/beetle1/assembly_flag', KeyValue, queue_size=1)
-        self.flag_pub_2 = rospy.Publisher('/beetle2/assembly_flag', KeyValue, queue_size=1)
+        # #flags for docking
+        # self.flag_msg = KeyValue()
+        # self.flag_pub_1 = rospy.Publisher('/beetle1/assembly_flag', KeyValue, queue_size=1)
+        # self.flag_pub_2 = rospy.Publisher('/beetle2/assembly_flag', KeyValue, queue_size=1)
 
         #others
         self.rate = rospy.Rate(40)
@@ -82,28 +82,28 @@ class aprilPIDcontroller():
         self.err_i += self.err
         self.pre_err = self.err
         
-    def dockingVerifier(self):
-        #set docking message
-        if self.currentEucDistance <= 0.01:
-            if self.currentEuler[1] <=2:
-                self.flag_msg.key = '1'
-                self.flag_msg.value = '1'
-        else:
-            self.flag_msg.key = '0'
-            self.flag_msg.value = '0'
+    # def dockingVerifier(self):
+    #     #set docking message
+    #     if self.currentEucDistance <= 0.01:
+    #         if self.currentEuler[1] <=2:
+    #             self.flag_msg.key = '1'
+    #             self.flag_msg.value = '1'
+    #     else:
+    #         self.flag_msg.key = '0'
+    #         self.flag_msg.value = '0'
 
     def defineYaw(self):
-        self.yaw = self.currentmocapEuler[2] + self.currentEuler[1]
-        if self.yaw >= 2:
-            self.nav_msg.yaw_nav_mode = 2
-        else:
-            self.nav_msg.yaw_nav_mode = 0
+        self.yaw = self.currentmocapEuler[2] - self.currentEuler[2]
+        # if self.yaw <= -0.03:
+        #     self.nav_msg.yaw_nav_mode = 2
+        # else:
+        #     self.nav_msg.yaw_nav_mode = 0
         
     def callback1(self,data):
         if data.detections:
             #set values to current pose
             position = data.detections[0].pose.pose.pose.position
-            self.currentDistance = [position.z, -position.x, -position.y] #x = z, y = -x, z = -y
+            self.currentDistance = [position.z, -position.x, -position.y]
             
             #calculate current euclid distance
             self.currentEucDistance = ((position.z-self.targetDistance[0])**2 + (-position.x-self.targetDistance[1])**2 + (-position.y-self.targetDistance[2])**2)**0.5
@@ -114,9 +114,9 @@ class aprilPIDcontroller():
             #calculate current Euler angle
             orientation = data.detections[0].pose.pose.pose.orientation
             self.currentQuarter = [orientation.x, orientation.y, orientation.z, orientation.w]
-            self.currentEuler = np.degrees(np.array([np.arctan2(2 * (orientation.w * orientation.x + orientation.y * orientation.z), 1 - 2 * (orientation.x**2 + orientation.y**2)),
-                             np.arcsin(2 * (orientation.w * orientation.y - orientation.z * orientation.x)),
-                             np.arctan2(2 * (orientation.w * orientation.z + orientation.x * orientation.y), 1 - 2 * (orientation.y**2 + orientation.z**2))]))
+            self.currentEuler = np.array([np.arctan2(2 * (orientation.x * orientation.y + orientation.w * orientation.z), 1 - 2 * (orientation.x**2 + orientation.y**2)),
+                             np.arcsin(2 * (orientation.w * orientation.y - orientation.x * orientation.z)),
+                             np.arctan2(2 * (orientation.w * orientation.z + orientation.x * orientation.y), 1 - 2 * (orientation.y**2 + orientation.z**2))])
 
             #set angular log
             self.lastEuler = self.currentEuler
@@ -146,7 +146,7 @@ class aprilPIDcontroller():
             self.currentmocapEuler = self.lastmocapEuler
             
     def main(self):
-        self.docking_msg.data = True 
+        # self.docking_msg.data = True 
         while not rospy.is_shutdown():
             #callback1, 2
 
@@ -181,29 +181,21 @@ class aprilPIDcontroller():
             self.nav_msg.target_vel_z = self.vel[2]
             self.pub.publish(self.nav_msg)
 
-            #beetle1 mode verifier
-            self.dockingVerifier()
+            # #beetle1 mode verifier
+            # self.dockingVerifier()
 
-            #switch beetle1 into assembled mode
-             # true ->activated false->disactivate
-            self.docking_pub.publish(self.docking_msg)
+            # #switch beetle1 into assembled mode
+            #  # true ->activated false->disactivate
+            # self.docking_pub.publish(self.docking_msg)
             
-             #flag_msg = KeyValue()
-             #flag_msg.key = '1'
-             #flag_msg.value = '1' # 1 -> assembly, 2->separate
-            self.flag_pub_1.publish(self.flag_msg)
-            self.flag_pub_2.publish(self.flag_msg)
+            #  #flag_msg = KeyValue()
+            #  #flag_msg.key = '1'
+            #  #flag_msg.value = '1' # 1 -> assembly, 2->separate
+            # self.flag_pub_1.publish(self.flag_msg)
+            # self.flag_pub_2.publish(self.flag_msg)
 
-            #rospy.loginfo(self.currentDistance)
-            rospy.loginfo(self.currentEucDistance)
-            #rospy.loginfo(self.vel)
-            #rospy.loginfo(self.currentQuarter)
-            #rospy.loginfo(self.currentmocapEuler)
-            rospy.loginfo(self.currentEuler)
-            #rospy.loginfo(self.yaw)
-            rospy.loginfo(self.flag_msg)
-            #rospy.loginfo(self.tag_lost_flag)
-            rospy.loginfo("")
+            rospy.loginfo(self.currentDistance)
+
             self.rate.sleep()
             
 if __name__ == "__main__":

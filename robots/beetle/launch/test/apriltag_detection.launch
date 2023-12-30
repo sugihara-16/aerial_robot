@@ -1,21 +1,4 @@
-<!-- <?xml version="1.0"?> -->
-
-<!-- <launch> -->
-<!--   <arg name="usb_cam_test" default="beetle"/> -->
-  
-<!--   <node pkg="usb_cam" type="usb_cam_node" name="usb_cam">  -->
-<!--     <param name="video_device" value="/dev/video2"/> -->
-<!--   </node> -->
-  
-<!--   <include file="$(find apriltag_ros)/launch/continuous_detection.launch"> -->
-<!--     <arg name="camera_name" value="/dev/Video2" /> -->
-<!--     <arg name="image_topic" value="image_raw" /> -->
-<!--   </include> -->
-
-<!--   <rosparam command="load" file="$(find beetle)/config/apriltag/tags_bundle.yaml" ns="$(arg usb_cam_test)/apriltag_ros_continuous_node"/> -->
-
-<!-- </launch> -->
-
+<?xml version="1.0"?>
 <launch>
   <arg name="node_namespace" default="apriltag_ros_continuous_node" />
   <arg name="camera_name" default="usb_cam" />

@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   message_generation
+  apriltag_ros
+  usb_cam
   )
 
 find_package(Eigen3 REQUIRED)

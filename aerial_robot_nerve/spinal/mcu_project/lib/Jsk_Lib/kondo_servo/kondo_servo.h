@@ -14,48 +14,53 @@
 
 #include "config.h"
 #include <ros.h>
-#include <spinal/ServoControlCmd.h>
-#include <spinal/ServoState.h>
+#include <sensor_msgs/JointState.h>
 #include <map>
 
+#define KONDO_SERVO_UPDATE_INTERVAL 2
+
 #define MAX_SERVO_NUM 32
-#define KONDO_SERVO_UPDATE_INTERVAL 10
-#define KONDO_SERVO_TIMEOUT 1
 #define KONDO_SERVO_POSITION_MIN 3500
 #define KONDO_SERVO_POSITION_MAX 11500
 #define KONDO_SERVO_ANGLE_MIN -2.36
 #define KONDO_SERVO_ANGLE_MAX 2.36
-#define SERVO_STATE_PUB_INTERVAL 25 //40Hz
 #define KONDO_BUFFER_SIZE 512
+#define KONDO_POSITION_TX_SIZE 3
 #define KONDO_POSITION_RX_SIZE 3
 
-#ifdef STM32H7
-  uint8_t dma_rx_buf_[KONDO_BUFFER_SIZE] __attribute__((section(".GpsRxBufferSection")));
-#else
-  uint8_t dma_rx_buf_[KONDO_BUFFER_SIZE];
-#endif
-  uint32_t rd_ptr_ = 0;
+namespace
+{
+  #ifdef STM32H7
+    uint8_t kondo_rx_buf_[KONDO_BUFFER_SIZE] __attribute__((section(".KondoRxBufferSection")));
+  #else
+    uint8_t kondo_rx_buf_[KONDO_BUFFER_SIZE];
+  #endif
+  uint32_t kondo_rd_ptr_ = 0;
+}
 
 class KondoServo
 {
 private:
   UART_HandleTypeDef* huart_;
-  spinal::ServoStates servo_state_msg_;
+  sensor_msgs::JointState joint_state_msg_;
   ros::NodeHandle* nh_;
-  ros::Subscriber<spinal::ServoControlCmd, KondoServo> kondo_servo_control_sub_;
-  ros::Publisher servo_state_pub_;
+  ros::Subscriber<sensor_msgs::JointState, KondoServo> kondo_servo_control_sub_;
+  ros::Publisher joint_state_pub_;
   uint16_t target_position_[MAX_SERVO_NUM];
   uint16_t current_position_[MAX_SERVO_NUM];
   bool activated_[MAX_SERVO_NUM];
   uint16_t pos_rx_buf_[KONDO_POSITION_RX_SIZE];
   uint32_t servo_state_pub_last_time_;
-  uint32_t dma_write_ptr_ ;
-  uint32_t pos_rx_ptr_ ;
+
+  uint8_t id_telem_ = 0;
+  char* servo_name_ = "1234";
+  bool is_receive_data = false;
+
 public:
   ~KondoServo(){}
   KondoServo():
-    kondo_servo_control_sub_("kondo_servo_cmd", &KondoServo::servoControlCallback, this),
-    servo_state_pub_("kondo_servo_states", &servo_state_msg_)
+    kondo_servo_control_sub_("gimbals_ctrl", &KondoServo::servoControlCallback, this),
+    joint_state_pub_("joint_states", &joint_state_msg_)
   {
   }
 
@@ -65,107 +70,105 @@ public:
     nh_ = nh;
 
     nh_->subscribe(kondo_servo_control_sub_);
-    nh_->advertise(servo_state_pub_);
+    nh_->advertise(joint_state_pub_);
 
     __HAL_UART_DISABLE_IT(huart, UART_IT_PE);
     __HAL_UART_DISABLE_IT(huart, UART_IT_ERR);
     HAL_HalfDuplex_EnableReceiver(huart_);
-    HAL_UART_Receive_DMA(huart, dma_rx_buf_, RX_BUFFER_SIZE);
+    HAL_UART_Receive_DMA(huart, kondo_rx_buf_, RX_BUFFER_SIZE);
 
-    memset(dma_rx_buf_, 0, RX_BUFFER_SIZE);
+    memset(kondo_rx_buf_, 0, RX_BUFFER_SIZE);
     memset(pos_rx_buf_, 0, KONDO_POSITION_RX_SIZE);
 
-    servo_state_msg_.servos_length = 5;
-    servo_state_msg_.servos = new spinal::ServoState[5];
-    servo_state_pub_last_time_ = 0;
-
-    pos_rx_ptr_ = 0;
+    joint_state_msg_.name_length = 4;
+    joint_state_msg_.name = new char*[4];
+    joint_state_msg_.name[0] = "1";
+    joint_state_msg_.name[1] = "2";
+    joint_state_msg_.name[2] = "3";
+    joint_state_msg_.name[3] = "4";
+    joint_state_msg_.position_length = 4;
+    joint_state_msg_.position = new double_t[4];
   }
 
   void update()
   {
+    int servo_id = servo_name_[id_telem_] - '0';
 
-    for(int i = 0; i < MAX_SERVO_NUM; i++)
-      {
-        if(activated_[i])
-          {
-            writePosCmd(i, target_position_[i]);
-          } else
-          {
-            writePosCmd(i, 0);  //freed
-          }
-      }
-    
-    if(HAL_GetTick() - servo_state_pub_last_time_ > SERVO_STATE_PUB_INTERVAL)
-      {
-        servo_state_pub_last_time_ = HAL_GetTick();
+    if(activated_[servo_id])
+      receiveSendOnce(servo_id, target_position_[servo_id]);
+    else
+      receiveSendOnce(servo_id, 0);  //freed
+
+    id_telem_++;
+    id_telem_ %= sizeof(servo_name_)/sizeof(servo_name_[0]);
+
+    if (id_telem_ == 1)  // the final data of the last round is received after the first data in this round is sent
         sendServoState();
-      }
-
   }
 
-  void writePosCmd(int id, uint16_t target_position)
+  void receiveSendOnce(int id, uint16_t target_position)
   {
-    int tx_size = 3;
-    uint8_t tx_buff[tx_size];
-    uint8_t ret;
+    if (is_receive_data)
+      {
+        memset(pos_rx_buf_, 0, KONDO_POSITION_RX_SIZE);
+
+        uint8_t rx_ptr = 0;
+        while(true)
+        {
+          if (!available()) break;
+          int data = readOneByte();
+          pos_rx_buf_[rx_ptr] = (uint8_t)data;
+          rx_ptr ++;
+          if (rx_ptr == KONDO_POSITION_RX_SIZE) break;
+        }
+
+        if (rx_ptr == KONDO_POSITION_RX_SIZE)
+        {
+          registerPos();
+          is_receive_data = false;
+        }
+        else
+        {
+          nh_->logwarn("WARN: Kondo servo receive error");
+        }
+      }
 
     /* transmit */
+    uint8_t tx_buff[KONDO_POSITION_TX_SIZE];
+    uint8_t ret;
+
     tx_buff[0] = 0x80 + id;
     tx_buff[1] = (uint8_t)((target_position & 0x3f80) >> 7); // higher 7 bits of 14 bits
     tx_buff[2] = (uint8_t)(target_position & 0x007f);        // lower  7 bits of 14 bits
     HAL_HalfDuplex_EnableTransmitter(huart_);
-    ret = HAL_UART_Transmit(huart_, tx_buff, tx_size, 1);
+    ret = HAL_UART_Transmit(huart_, tx_buff, KONDO_POSITION_TX_SIZE, 1);
 
     /* receive */
     if(ret == HAL_OK)
       {
         HAL_HalfDuplex_EnableReceiver(huart_);
+        is_receive_data = true;
       }
-
-    /* getting data from Ring Buffer */
-    while(true){
-      int data = read();
-      if(data < 0) break;
-      pos_rx_buf_[pos_rx_ptr_] = (uint8_t)data;
-
-      if(pos_rx_ptr_ == 2) registerPos();
-
-      pos_rx_ptr_ ++;
-      pos_rx_ptr_ %= KONDO_POSITION_RX_SIZE;
-      
-    }
   }
 
-  int read()
+  int readOneByte()
   {
     /* handle RX Overrun Error */
     if ( __HAL_UART_GET_FLAG(huart_, UART_FLAG_ORE) )
       {
         __HAL_UART_CLEAR_FLAG(huart_,
                               UART_CLEAR_NEF | UART_CLEAR_OREF | UART_FLAG_RXNE | UART_FLAG_ORE);
-        HAL_UART_Receive_DMA(huart_, dma_rx_buf_, RX_BUFFER_SIZE); // restart
+        HAL_UART_Receive_DMA(huart_, kondo_rx_buf_, RX_BUFFER_SIZE); // restart
       }
-    dma_write_ptr_ =  (KONDO_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart_->hdmarx)) % (KONDO_BUFFER_SIZE);
-
-    const char* a = std::to_string(__HAL_DMA_GET_COUNTER(huart_->hdmarx)).c_str();
-    nh_->logerror(a);
+      uint32_t dma_write_ptr =  (KONDO_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart_->hdmarx)) % (KONDO_BUFFER_SIZE);
 
     int c = -1;
-    uint32_t tick_start = HAL_GetTick();
-    while(true){
-      if(rd_ptr_ != dma_write_ptr_)
-        {
-          c = (int)dma_rx_buf_[rd_ptr_++];
-          rd_ptr_ %= KONDO_BUFFER_SIZE;
-          return c;
-        }
-
-      if ((HAL_GetTick() - tick_start) > KONDO_SERVO_TIMEOUT)
-        {
-          return c;
-        }
+    if (kondo_rd_ptr_ != dma_write_ptr)
+    {
+      c = (int)kondo_rx_buf_[kondo_rd_ptr_++];
+      kondo_rd_ptr_ %= KONDO_BUFFER_SIZE;
     }
+    return c;
   }
 
   void registerPos()
@@ -173,51 +176,46 @@ public:
     int id = (int)(pos_rx_buf_[0] & 0x1f);
     uint16_t current_position = (uint16_t)((0x7f & pos_rx_buf_[1]) << 7) + (uint16_t)(0x7f & pos_rx_buf_[2]);
     current_position_[id] = current_position;
-    memset(pos_rx_buf_, 0, KONDO_POSITION_RX_SIZE);
   }
-
-  
 
   bool available()
   {
-    dma_write_ptr_ =  (GPS_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart_->hdmarx)) % (GPS_BUFFER_SIZE);
-    return (rd_ptr_ != dma_write_ptr_);
+    uint32_t dma_write_ptr =  (KONDO_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart_->hdmarx)) % (KONDO_BUFFER_SIZE);
+    return (kondo_rd_ptr_ != dma_write_ptr);
   }
 
-
-  void servoControlCallback(const spinal::ServoControlCmd& cmd_msg)
+  void servoControlCallback(const sensor_msgs::JointState& cmd_msg)
   {
-    for(int i = 0; i < cmd_msg.index_length; i++)
+    for (int i = 0; i < cmd_msg.name_length; i++)
       {
-        if(0 <= cmd_msg.index[i] && cmd_msg.index[i] < MAX_SERVO_NUM)
-          {
-            if(KONDO_SERVO_POSITION_MIN <= cmd_msg.angles[i] && cmd_msg.angles[i] <= KONDO_SERVO_POSITION_MAX)
-              {
-                activated_[cmd_msg.index[i]] = true;
-                target_position_[cmd_msg.index[i]] = cmd_msg.angles[i];
-              }
-            else if(cmd_msg.angles[i] == 0)
-              {
-                activated_[cmd_msg.index[i]] = false;
-              }
-          }
+        uint8_t servo_id = cmd_msg.name[i][0] - '0';
+        if (servo_id >= MAX_SERVO_NUM)
+          continue;
+
+        double_t angle_rad = cmd_msg.position[i];
+        if (angle_rad == 42)  // 42, the answer to the ultimate question of life, the universe, and everything
+        {
+          activated_[servo_id] = false;  // temporary command to free servo.
+          continue;
+        }
+
+        if (angle_rad < KONDO_SERVO_ANGLE_MIN || angle_rad > KONDO_SERVO_ANGLE_MAX)
+          continue;
+
+        activated_[servo_id] = true;
+        target_position_[servo_id] = rad2KondoPosConv(angle_rad);
+
       }
   }
 
   void sendServoState()
   {
-    servo_state_msg_.stamp = nh_->now();
-    bool send_flag = false;
-    for (unsigned int i = 0; i < 5; i++)
-      {   
-        send_flag = true;
-        spinal::ServoState servo;
-        servo.index = i;
-        servo.angle = current_position_[i];
-        servo_state_msg_.servos[i] = servo;
-
-        if(send_flag) servo_state_pub_.publish(&servo_state_msg_);
+    joint_state_msg_.header.stamp = nh_->now();
+    for (uint8_t i = 1; i < 5; i++)
+      {
+        joint_state_msg_.position[i-1] = kondoPos2RadConv(current_position_[i]);
       }
+    joint_state_pub_.publish(&joint_state_msg_);
   }
 
   void setTargetPos(const std::map<uint16_t, float>& servo_map)
@@ -244,7 +242,6 @@ public:
     }
   }
 
-  
   uint16_t rad2KondoPosConv(float angle)
   {
     uint16_t kondo_pos = (uint16_t)((KONDO_SERVO_POSITION_MAX-KONDO_SERVO_POSITION_MIN)*(-angle - KONDO_SERVO_ANGLE_MIN)/(KONDO_SERVO_ANGLE_MAX - KONDO_SERVO_ANGLE_MIN) + KONDO_SERVO_POSITION_MIN); //min-max normarization
@@ -254,7 +251,6 @@ public:
   float kondoPos2RadConv(int pos)
   {
     float angle = -(float)((KONDO_SERVO_ANGLE_MAX-KONDO_SERVO_ANGLE_MIN)*(pos - KONDO_SERVO_POSITION_MIN)/(KONDO_SERVO_POSITION_MAX - KONDO_SERVO_POSITION_MIN) + KONDO_SERVO_ANGLE_MIN); //min-max normarization
-
     return angle;
   }
 

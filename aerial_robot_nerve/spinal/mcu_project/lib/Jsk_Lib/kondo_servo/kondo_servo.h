@@ -57,7 +57,7 @@ private:
 
   uint8_t id_telem_ = 0;
   char* servo_name_ = "1234";
-  bool is_receive_data = false;
+  bool is_receive_data_ = false;
 
   void receiveSendOnce(int id, uint16_t target_position);
 

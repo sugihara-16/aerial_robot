@@ -50,7 +50,7 @@ void KondoServo::update()
 
 void KondoServo::receiveSendOnce(int id, uint16_t target_position)
 {
-  if (is_receive_data)
+  if (is_receive_data_)
   {
     memset(pos_rx_buf_, 0, KONDO_POSITION_RX_SIZE);
 
@@ -69,7 +69,7 @@ void KondoServo::receiveSendOnce(int id, uint16_t target_position)
     if (rx_ptr == KONDO_POSITION_RX_SIZE)
     {
       registerPos();
-      is_receive_data = false;
+      is_receive_data_ = false;
     }
     else
     {
@@ -91,7 +91,7 @@ void KondoServo::receiveSendOnce(int id, uint16_t target_position)
   if (ret == HAL_OK)
   {
     HAL_HalfDuplex_EnableReceiver(huart_);
-    is_receive_data = true;
+    is_receive_data_ = true;
   }
 }
 

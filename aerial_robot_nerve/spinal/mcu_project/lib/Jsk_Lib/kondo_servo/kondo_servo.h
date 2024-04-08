@@ -148,9 +148,6 @@ public:
       }
     dma_write_ptr_ =  (KONDO_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart_->hdmarx)) % (KONDO_BUFFER_SIZE);
 
-    const char* a = std::to_string(__HAL_DMA_GET_COUNTER(huart_->hdmarx)).c_str();
-    nh_->logerror(a);
-
     int c = -1;
     uint32_t tick_start = HAL_GetTick();
     while(true){

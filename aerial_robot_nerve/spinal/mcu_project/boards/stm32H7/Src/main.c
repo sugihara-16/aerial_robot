@@ -48,7 +48,6 @@
 
 #include <Spine/spine.h>
 
-#include "dshot_esc/dshot.h"
 #include "kondo_servo/kondo_servo.h"
 
 /* USER CODE END Includes */
@@ -114,8 +113,6 @@ IMUOnboard imu_;
 Baro baro_;
 GPS gps_;
 BatteryStatus battery_status_;
-
-DShot dshot_;
 
 /* driver instances */
 KondoServo kondo_servo_;
@@ -247,7 +244,7 @@ int main(void)
 
   imu_.init(&hspi1, &hi2c3, &nh_, IMUCS_GPIO_Port, IMUCS_Pin, LED0_GPIO_Port, LED0_Pin);
   baro_.init(&hi2c1, &nh_, BAROCS_GPIO_Port, BAROCS_Pin);
-  battery_status_.init(&hadc1, &nh_, false);
+  battery_status_.init(&hadc1, &nh_);
 
 #if GPS_FLAG
   gps_.init(&huart3, &nh_, LED2_GPIO_Port, LED2_Pin);
@@ -256,9 +253,7 @@ int main(void)
   kondo_servo_.init(&huart3, &nh_);
   estimator_.init(&imu_, &baro_, NULL, &nh_);  // imu + baro + gps => att + alt + pos(xy)
 #endif
-  dshot_.init(DSHOT600, &htim1, TIM_CHANNEL_1, &htim1, TIM_CHANNEL_2, &htim1, TIM_CHANNEL_3, &htim1, TIM_CHANNEL_4);
-  dshot_.initTelemetry(&huart2);
-  controller_.init(&htim1, &htim4, &estimator_, &kondo_servo_, &dshot_, &battery_status_, &nh_, &flightControlMutexHandle);
+  controller_.init(&htim1, &htim4, &estimator_, &battery_status_, &nh_, &flightControlMutexHandle);
 
   FlashMemory::read(); //IMU calib data (including IMU in neurons)
 

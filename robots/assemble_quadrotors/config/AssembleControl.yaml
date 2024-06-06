@@ -58,9 +58,9 @@ assemble:
 male:
   controller:
     xy:
-      p_gain: 12
+      p_gain: 4.0
       i_gain: 0.1
-      d_gain: 6.0
+      d_gain: 4.0
       limit_sum: 3
       limit_p: 3
       limit_i: 1.5
@@ -115,9 +115,9 @@ male:
 female:
   controller:
     xy:
-      p_gain: 12
+      p_gain: 4.0
       i_gain: 0.1
-      d_gain: 6.0
+      d_gain: 4.0
       limit_sum: 3
       limit_p: 3
       limit_i: 1.5

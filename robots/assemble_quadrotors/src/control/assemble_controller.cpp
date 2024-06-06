@@ -109,7 +109,6 @@ void AssembleController::sendCmd(){
       std::vector<float> target_base_thrust {all_target_base_thrust.begin(), all_target_base_thrust.begin()+4};
       assemble_base_thrust_sum_ = std::accumulate(target_base_thrust.begin(), target_base_thrust.end(), 0.0);
       double sum_ratio = transThrustSumCalc(assemble_base_thrust_sum_, dessemble_base_thrust_sum_);
-      // ROS_INFO("ratio is %f", sum_ratio);
       for(int i = 0; i<4; i++)
         {
           target_base_thrust[i] = target_base_thrust[i] * sum_ratio;
@@ -119,7 +118,6 @@ void AssembleController::sendCmd(){
       std::vector<float> target_base_thrust {all_target_base_thrust.begin() + 4, all_target_base_thrust.begin()+8};
       assemble_base_thrust_sum_ = std::accumulate(target_base_thrust.begin(), target_base_thrust.end(), 0.0);
       double sum_ratio = transThrustSumCalc(assemble_base_thrust_sum_, dessemble_base_thrust_sum_);
-      // ROS_INFO("ratio is %f", sum_ratio);
       for(int i = 0; i<4; i++)
         {
           target_base_thrust[i] = target_base_thrust[i] * sum_ratio;
@@ -167,7 +165,6 @@ void AssembleController::sendCmd(){
     auto target_base_thrust = dessemble_mode_controller_->getTargetBaseThrust();
     dessemble_base_thrust_sum_ = std::accumulate(target_base_thrust.begin(), target_base_thrust.end(), 0.0);
     double sum_ratio = transThrustSumCalc(dessemble_base_thrust_sum_, assemble_base_thrust_sum_);
-    // ROS_INFO("ratio is %f", sum_ratio);
     for(int i = 0; i<4; i++)
       {
         target_base_thrust[i] = target_base_thrust[i] * sum_ratio;

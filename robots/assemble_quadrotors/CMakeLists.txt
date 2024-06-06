@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(NLopt REQUIRED)
 find_package(Eigen3 REQUIRED)
-
+catkin_python_setup()
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
@@ -54,3 +54,6 @@ add_library(assemble_controller src/control/assemble_controller.cpp)
 target_link_libraries(assemble_controller ${catkin_LIBRARIES})
 
 
+install(DIRECTORY scripts
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  USE_SOURCE_PERMISSIONS)

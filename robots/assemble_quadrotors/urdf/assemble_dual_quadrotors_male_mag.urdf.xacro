@@ -164,6 +164,104 @@
   <xacro:propeller_module id = "3" x = "0.10618" y = "0.10708" z = "0.05674"  pich = "${-opt_pich_1}" yaw = "${opt_yaw_1}" direction = "1" />
   <xacro:propeller_module id = "4" x = "-0.10744" y = "0.12274" z = "0.05289"  pich = "${-opt_pich_2}" yaw = "${opt_yaw_2}"  direction = "-1" />
 
+  
+  ##### dummy grasp links ####
+  <link name="dummy_arm">
+    <inertial>
+      <mass value = "0.01" />
+      <origin xyz="0.0 0 0" rpy="0 0 0"/>
+      <inertia
+          ixx="0.0001" ixy="0.0000" ixz="0.0000"
+          iyy="0.0001" iyz="0.0000" izz="0.0001"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+    </visual>
+  </link>
+  <joint name="base_dummy_arm_joint" type="fixed">
+    <parent link="main_body"/>
+    <child link="dummy_arm"/>
+    <origin xyz="0.2 0.0 -0.04" rpy="0 0 0"/>
+  </joint>
+  <joint name="dummy_arm_palm_joint" type="revolute">
+    <parent link="dummy_arm"/>
+    <origin xyz="0.02 0 0" rpy="0 0 0"/>
+    <child link="dummy_palm"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="0" upper="0" effort="0" velocity="0"/>
+    <dynamics damping="0.2" friction="0.02"/>
+  </joint>
 
+  <link name="dummy_palm">
+    <inertial>
+      <mass value = "0.001" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia
+          ixx="0.0001" ixy="0.0000" ixz="0.0000"
+          iyy="0.0001" iyz="0.0000" izz="0.0001"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="dummy_palm_gripper_joint" type="revolute">
+    <parent link="dummy_palm"/>
+    <child link="dummy_gripper"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="0" upper="0" effort="0" velocity="0"/>
+    <dynamics damping="0.2" friction="0.02"/>
+  </joint>
+
+
+  <link name="dummy_gripper">
+    <inertial>
+      <mass value = "0.001" />
+      <origin xyz="0.0 0 0" rpy="0 0 0"/>
+      <inertia
+          ixx="0.0001" ixy="0.0000" ixz="0.0000"
+          iyy="0.0001" iyz="0.0000" izz="0.0001"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 0" rpy="0.0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.04"/>
+      </geometry>
+    </visual>
+  </link>
+  
+  <transmission name="joint_tran1">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="dummy_arm_palm_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="servo1">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="joint_tran2">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="dummy_palm_gripper_joint">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="servo2">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
 
 </robot>

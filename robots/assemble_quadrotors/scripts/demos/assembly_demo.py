@@ -19,14 +19,14 @@ class AssemblyDemo():
 
             with sm_sub1:
                 smach.StateMachine.add('StandbyState1_2',
-                                       StandbyState(robot_name = 'assemble_quadrotors1', robot_id = 1, leader = 'assemble_quadrotors2', leader_id = 2, attach_dir = -1.0),
+                                       StandbyState(robot_name = 'assemble_quadrotors1', robot_id = 1, leader = 'assemble_quadrotors2', leader_id = 2, attach_dir = 1.0),
                                        transitions={'done':'ApproachState1_2', 'in_process': 'StandbyState1_2', 'emergency':'interupted_1_2'})
 
                 smach.StateMachine.add('ApproachState1_2',
-                                       ApproachState(robot_name = 'assemble_quadrotors1', robot_id = 1, leader = 'assemble_quadrotors2', leader_id = 2, attach_dir = -1.0),
+                                       ApproachState(robot_name = 'assemble_quadrotors1', robot_id = 1, leader = 'assemble_quadrotors2', leader_id = 2, attach_dir = 1.0),
                                        transitions={'done':'AssemblyState1_2', 'in_process':'ApproachState1_2', 'fail':'StandbyState1_2', 'emergency':'interupted_1_2'})
 
-                smach.StateMachine.add('AssemblyState1_2', AssemblyState(robot_name = 'assemble_quadrotors1', robot_id = 1, leader = 'assemble_quadrotors2', leader_id = 2, attach_dir = -1.0),
+                smach.StateMachine.add('AssemblyState1_2', AssemblyState(robot_name = 'assemble_quadrotors1', robot_id = 1, leader = 'assemble_quadrotors2', leader_id = 2, attach_dir = 1.0),
                                        transitions={'done':'succeeded_1_2', 'emergency':'interupted_1_2'})
 
             

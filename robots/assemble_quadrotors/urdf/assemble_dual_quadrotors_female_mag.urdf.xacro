@@ -76,10 +76,10 @@
         <origin rpy="0 0 0" xyz="0 0 0"/>
         <geometry>
           <xacro:if value="${direction == 1}">
-            <mesh filename="package://assemble_quadrotors/urdf/mesh/5_inchi_propeller.STL" />
+            <mesh filename="package://assemble_quadrotors/urdf/mesh/5inch_propeller.dae" />
           </xacro:if>
           <xacro:unless value="${direction == 1}">
-	    <mesh filename="package://assemble_quadrotors/urdf/mesh/5_inchi_propeller.STL" />
+	    <mesh filename="package://assemble_quadrotors/urdf/mesh/5inch_propeller.dae" />
           </xacro:unless>
         </geometry>
       </visual>
@@ -139,7 +139,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://assemble_quadrotors/urdf/mesh/Assemble_quadrotor_female_magnet.STL" />
+        <mesh filename="package://assemble_quadrotors/urdf/mesh/assemble_mag_femlae.dae" />
       </geometry>
     </visual>
     <collision>

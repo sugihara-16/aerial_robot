@@ -63,7 +63,7 @@ class SwitchState(smach.State):
         # self.flag_pub = rospy.Publisher('/' + self.robot_name + '/assembly_flag', KeyValue, queue_size = 1)
         # self.flag_pub_neighboring = rospy.Publisher('/' + self.neighboring + '/assembly_flag', KeyValue, queue_size = 1)
         self.flag_pub = rospy.Publisher('/' + self.robot_name + '/switching_flag', Empty, queue_size = 1)
-        self.flag_pub_neighboring = rospy.Publisher('/' + self.leader + '/switching_flag', Empty, queue_size = 1)
+        self.flag_pub_neighboring = rospy.Publisher('/' + self.neighboring + '/switching_flag', Empty, queue_size = 1)
 
         if(separate_dir > 0):
             self.docking_pub = rospy.Publisher('/' + self.neighboring  + '/docking_cmd', Bool, queue_size = 1)
@@ -91,7 +91,10 @@ class SwitchState(smach.State):
                 self.kondo_servo_neighboring.sendTargetAngle(self.unlock_servo_angle_female)
         else:
             self.docking_msg.data = False
-            self.docking_pub.publish(self.docking_msg)
+            c = 0
+            while c < 100:
+                self.docking_pub.publish(self.docking_msg)
+                c +=1
         time.sleep(5.0)
         return 'done'
 

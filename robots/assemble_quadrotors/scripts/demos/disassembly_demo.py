@@ -18,7 +18,7 @@ class DisassemblyDemo():
 
             with sm_sub1:
                 smach.StateMachine.add('SwitchState1_2',
-                                       SwitchState(robot_name = 'assemble_quadrotors1', robot_id = 1, neighboring = 'assemble_quadrotors2', neighboring_id = 2, separate_dir = -1),
+                                       SwitchState(robot_name = 'assemble_quadrotors1', robot_id = 1, neighboring = 'assemble_quadrotors2', neighboring_id = 2, separate_dir = -1.0),
                                        transitions={'done':'SeparateState1_2'})
 
                 smach.StateMachine.add('SeparateState1_2',

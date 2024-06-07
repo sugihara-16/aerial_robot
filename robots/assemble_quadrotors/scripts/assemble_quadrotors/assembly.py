@@ -36,16 +36,16 @@ class StandbyState(smach.State):
                  leader = 'beetle2',
                  leader_id = 2,
                  airframe_size = 0.52,
-                 x_offset = 0.12,
+                 x_offset = 0.2,
                  y_offset = 0,
                  z_offset = 0,
                  x_tol = 0.01,
-                 y_tol = 0.01,
-                 z_tol = 0.01,
-                 roll_tol = 0.08,
-                 pitch_tol = 0.08,
-                 yaw_tol = 0.08,
-                 root_fc_dis = 0.129947,
+                 y_tol = 0.1,
+                 z_tol = 0.1,
+                 roll_tol = 1.0,
+                 pitch_tol = 1.0,
+                 yaw_tol = 1.1,
+                 root_fc_dis = 0.0,
                  attach_dir = -1.0):
 
         smach.State.__init__(self, outcomes=['done','in_process','emergency'])
@@ -145,9 +145,10 @@ class StandbyState(smach.State):
         if(pos_error[0] * self.attach_dir > 0):
             pos_error[0] = 0.0
         att_error = np.array([0,0,0])-tf.transformations.euler_from_quaternion(follower_from_leader[1])
-        rospy.loginfo(pos_error)
+        rospy.loginfo(np.abs(pos_error))
+        rospy.logwarn(self.pos_error_tol)
         #check if pos and att error are within the torrelance
-        if np.all(np.less(np.abs(pos_error),self.pos_error_tol)) and np.all(np.less(np.abs(att_error),self.att_error_tol)):
+        if np.all(np.less(np.abs(pos_error),self.pos_error_tol)):
             return 'done'
         elif self.emergency_flag:
             return 'emergency'
@@ -199,16 +200,16 @@ class ApproachState(smach.State):
                  leader = 'beetle2',
                  leader_id = 2,
                  airframe_size = 0.52,
-                 x_offset = 0,
+                 x_offset = -0.1,
                  y_offset = 0,
-                 z_offset = 0,
-                 x_tol = 0.02,
-                 y_tol = 0.02,
-                 z_tol = 0.02,
-                 roll_tol = 0.08,
-                 pitch_tol = 0.08,
-                 yaw_tol = 0.08,
-                 root_fc_dis = 0.129947,
+                 z_offset = 0.0,
+                 x_tol = 0.01,
+                 y_tol = 0.05,
+                 z_tol = 0.1,
+                 roll_tol = 1.0,
+                 pitch_tol = 1.0,
+                 yaw_tol = 1.1,
+                 root_fc_dis = 0.0,
                  x_danger_thre = 0.02,
                  y_danger_thre = 0.1,
                  z_danger_thre = 0.1,
@@ -307,11 +308,11 @@ class ApproachState(smach.State):
         rospy.loginfo(pos_error)
 
         #check if pos and att error are within the torrelance
-        if np.all(np.less(np.abs(pos_error),self.pos_error_tol)) and np.all(np.less(np.abs(att_error),self.att_error_tol)):
+        if np.all(np.less(np.abs(pos_error),self.pos_error_tol)):
             return 'done'
         elif self.emergency_flag:
             return 'emergency'
-        elif np.all(np.greater(np.abs(pos_error),self.pos_danger_thre)) or np.all(np.greater(np.abs(att_error),self.att_danger_thre)):
+        elif np.all(np.greater(np.abs(pos_error),self.pos_danger_thre)):
             return 'fail'
         else:
             # x,y,z and yaw

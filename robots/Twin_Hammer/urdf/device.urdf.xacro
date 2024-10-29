@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot
+    xmlns:xacro="http://www.ros.org/wiki/xacro" name="Twin_Hammer" >
+    
+  <baselink name="fc" />
+  <thrust_link name="thrust" />
+
+  <!-- kinematics [m] -->
+  <xacro:property name="rod_length" value=".424" />
+  <xacro:property name="inter_joint_x_offset" value=".02575" />
+  <xacro:property name="gimbal_roll_x_offset" value="-0.01" />
+  <xacro:property name="gimbal_pitch_z_offset" value="0.037" />
+  <xacro:property name="PC_mount_offset" value="0.2" />
+
+  <!-- dynamics -->
+  <m_f_rate value="0" /> <!-- drug torque rate -->
+  <xacro:property name="max_force" value="30" /> <!-- [N] -->
+  <xacro:property name="min_force" value="2" /> <!-- [N] -->
+
+</robot>

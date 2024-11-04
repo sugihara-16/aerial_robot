@@ -241,7 +241,7 @@ int main(void)
   battery_status_.init(&hadc1, &nh_);
   estimator_.init(&imu_, &baro_, &gps_, &nh_);  // imu + baro + gps => att + alt + pos(xy)
   controller_.init(&htim1, &htim4, &estimator_, &battery_status_, &nh_, &flightControlMutexHandle);
-
+  hogehoge_.init();
   FlashMemory::read(); //IMU calib data (including IMU in neurons)
 
 #if NERVE_COMM        

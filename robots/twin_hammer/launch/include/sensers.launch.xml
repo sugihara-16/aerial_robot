@@ -3,7 +3,7 @@
 
   <arg name="real_machine" default="false" />
   <arg name="simulation" default="false" />
-  <arg name="robot_ns" default="TwinHammer" />
+  <arg name="robot_ns" default="twin_hammer" />
 
   <group ns="$(arg robot_ns)">
 

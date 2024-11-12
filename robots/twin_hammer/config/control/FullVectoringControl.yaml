@@ -1,4 +1,4 @@
-aerial_robot_control_name: aerial_robot_control/twin_hammer_full_vectoring
+aerial_robot_control_name: twin_hammer/twin_hammer_controller
 
 controller:
 

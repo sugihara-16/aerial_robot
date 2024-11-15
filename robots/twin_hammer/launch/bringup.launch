@@ -15,7 +15,7 @@
   <arg name="direct_model_name" />
   <arg name="spawn_x" default="0.0"/>
   <arg name="spawn_y" default="0.0"/>
-  <arg name="spawn_z" default="0.0"/>
+  <arg name="spawn_z" default="0.181"/>
   <arg name="spawn_yaw" default="0.0"/>
   <arg name="robot_id" default="" />
   <arg name="robot_ns" value="twin_hammer$(arg robot_id)" />
@@ -59,11 +59,11 @@
   </group>
 
   ###########  Base Platform  ###########
-  <!-- <node pkg="aerial_robot_base" type="aerial_robot_base_node" name="aerial_robot_base_node" ns="$(arg robot_ns)" output="screen" >
+  <node pkg="aerial_robot_base" type="aerial_robot_base_node" name="aerial_robot_base_node" ns="$(arg robot_ns)" output="screen" >
     <param name="tf_prefix" value="$(arg robot_ns)"/>
     <param name="param_verbose" value="false"/>
     <param name="main_rate" value="40"/>
-  </node> -->
+  </node>
 
   ###########  Robot Model  ###########
   <arg name="description_mode" value="urdf" unless="$(arg simulation)" />

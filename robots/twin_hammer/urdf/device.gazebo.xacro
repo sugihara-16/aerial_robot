@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <robot
-    xmlns:xacro="http://www.ros.org/wiki/xacro" name="TwinHammer" >
+    xmlns:xacro="http://www.ros.org/wiki/xacro" name="twin_hammer" >
 
-  <xacro:arg name="robot_name" default="TwinHammer" />
+  <xacro:arg name="robot_name" default="twin_hammer" />
 
   <!-- robot urdf -->
-  <xacro:include filename="$(find Twin_Hammer)/urdf/robot.urdf.xacro" />
+  <xacro:include filename="$(find twin_hammer)/urdf/device.urdf.xacro" />
 
   <!-- gazebo plugin for default controller and sensors -->
   <xacro:include filename="$(find aerial_robot_simulation)/xacro/spinal.gazebo.xacro" />

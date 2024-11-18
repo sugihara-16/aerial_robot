@@ -10,8 +10,8 @@ TwinHammerModel::TwinHammerModel(bool init_with_rosparam, bool verbose, double f
 void TwinHammerModel::updateRobotModelImpl(const KDL::JntArray& joint_positions)
 {
   // GimbalrotorRobotModel::updateRobotModelImpl(joint_positions);
-  RobotModel::updateRobotModelImpl(joint_positions);
-  const auto seg_tf_map = getSegmentsTf();
+  // RobotModel::updateRobotModelImpl(joint_positions);
+  // const auto seg_tf_map = getSegmentsTf();
 }
 
 /* plugin registration */

@@ -82,13 +82,13 @@ Visualization Manager:
           Value: true
         twin_hammer/edf2_right:
           Value: true
-        twin_hammer/thrust1_left:
+        twin_hammer/thrust1:
           Value: true
-        twin_hammer/thrust1_right:
+        twin_hammer/thrust3:
           Value: true
-        twin_hammer/thrust2_left:
+        twin_hammer/thrust2:
           Value: true
-        twin_hammer/thrust2_right:
+        twin_hammer/thrust4:
           Value: true
         world:
           Value: true
@@ -110,9 +110,9 @@ Visualization Manager:
                     {}
                   twin_hammer/edf1_right:
                     {}
-                  twin_hammer/thrust1_left:
+                  twin_hammer/thrust1:
                     {}
-                  twin_hammer/thrust1_right:
+                  twin_hammer/thrust3:
                     {}
               twin_hammer/gimbal2_roll_module:
                 twin_hammer/gimbal2_pitch_module:
@@ -120,9 +120,9 @@ Visualization Manager:
                     {}
                   twin_hammer/edf2_right:
                     {}
-                  twin_hammer/thrust2_left:
+                  twin_hammer/thrust2:
                     {}
-                  twin_hammer/thrust2_right:
+                  twin_hammer/thrust4:
                     {}
       Update Interval: 0
       Value: true
@@ -185,22 +185,22 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        thrust1_left:
+        thrust1:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        thrust1_right:
+        thrust3:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        thrust2_left:
+        thrust2:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        thrust2_right:
+        thrust4:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -239,7 +239,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.2
+      Distance: 1.5
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

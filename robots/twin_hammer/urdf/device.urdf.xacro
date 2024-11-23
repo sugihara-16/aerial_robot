@@ -3,7 +3,7 @@
    xmlns:xacro="http://www.ros.org/wiki/xacro" name="Twin_Hammer" >
   
  <baselink name="fc" />
- <!-- <thrust_link name="thrust" /> -->
+ <thrust_link name="thrust" />
  <xacro:property name="pi" value="3.1415926535897931" />
 
 
@@ -131,11 +131,11 @@
    <joint name="rotor${id}" type="continuous">
      <limit effort="100.0" lower="${min_force}" upper="${max_force}" velocity="0.5"/>
      <parent link="gimbal${id}_pitch_module"/>
-     <child link="thrust${id}_left"/>
+     <child link="thrust${id}"/>
      <origin rpy="0 0 0" xyz="0 0.1115 0"/>
      <axis xyz="0 0 1"/>
    </joint>
-   <link name="thrust${id}_left">
+   <link name="thrust${id}">
      <inertial>
        <origin xyz="0 0 0" rpy="0 0 0"/>
        <mass value="0.0001"/>
@@ -149,11 +149,11 @@
    <joint name="rotor${id+2}" type="continuous">
      <limit effort="100.0" lower="${min_force}" upper="${max_force}" velocity="0.5"/>
      <parent link="gimbal${id}_pitch_module"/>
-     <child link="thrust${id}_right"/>
+     <child link="thrust${id+2}"/>
      <origin rpy="0 0 0" xyz="0 -0.1115 0"/>
      <axis xyz="0 0 1"/>
    </joint>
-   <link name="thrust${id}_right">
+   <link name="thrust${id+2}">
      <inertial>
        <origin xyz="0 0 0" rpy="0 0 0"/>
        <mass value="0.0001"/>
@@ -197,8 +197,8 @@
            izz="0.000002"/>
      </inertial>
    </link>
-   <xacro:damping_factor link ="thrust${id}_left"/>
-   <!-- <xacro:damping_factor link ="thrust${id}_right"/> -->
+   <xacro:damping_factor link ="thrust${id}"/>
+   <xacro:damping_factor link ="thrust${id+2}"/>
 
    <!-- hardware interface -->
    <transmission name="gimbal${id}_roll_tran">

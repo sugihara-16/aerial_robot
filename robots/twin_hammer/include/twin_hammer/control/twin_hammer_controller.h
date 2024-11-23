@@ -1,12 +1,12 @@
 // -*- mode: c++ -*-
 
 #pragma once
+#include <aerial_robot_control/control/base/pose_linear_controller.h>
 #include <twin_hammer/model/twin_hammer_model.h>
-#include <gimbalrotor/control/gimbalrotor_controller.h>
-
+// #include <gimbalrotor/control/gimbalrotor_controller.h>
 namespace aerial_robot_control
 {
-  class TwinHammerController: public GimbalrotorController
+  class TwinHammerController: public PoseLinearController
   {
   public:
     TwinHammerController();
@@ -18,11 +18,18 @@ namespace aerial_robot_control
                     boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
                     double ctrl_loop_rate
                     ) override;
+
   private:
-    void controlCore() override;
+    boost::shared_ptr<TwinHammerModel> twin_hammer_model_;
+    ros::Publisher flight_cmd_pub_;
+    ros::Publisher gimbal_control_pub_;
+    std::vector<float> target_base_thrust_;
+    std::vector<double> target_gimbal_angles_;
+    Eigen::VectorXd target_vectoring_f_;
+    void sendCmd() override;
 
   protected:
-    void rosParamInit() override;
-    void reset() override;
+      void controlCore() override;
+    // void rosParamInit() ;
   };
 };

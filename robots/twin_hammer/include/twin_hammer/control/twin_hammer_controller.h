@@ -23,13 +23,21 @@ namespace aerial_robot_control
     boost::shared_ptr<TwinHammerModel> twin_hammer_model_;
     ros::Publisher flight_cmd_pub_;
     ros::Publisher gimbal_control_pub_;
+    ros::Subscriber haptics_switch_sub_;
+    ros::Subscriber haptics_wrench_sub_;
     std::vector<float> target_base_thrust_;
     std::vector<double> target_gimbal_angles_;
     Eigen::VectorXd target_vectoring_f_;
+    bool use_haptics_flag_;
+    bool haptics_switch_;
+    Eigen::Vector3d haptics_force_;
+    Eigen::Vector3d haptics_torque_;
     void sendCmd() override;
+    void HapticsSwitchCallback(std_msgs::Int8 msg);
+    void HapticsWrenchCallback(geometry_msgs::WrenchStamped msg);
 
   protected:
-      void controlCore() override;
-    // void rosParamInit() ;
+    void controlCore() override;
+    void rosParamInit() ;
   };
 };

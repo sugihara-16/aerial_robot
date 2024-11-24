@@ -22,23 +22,81 @@ void TwinHammerController::initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
 
   flight_cmd_pub_ = nh_.advertise<spinal::FourAxisCommand>("four_axes/command", 1);
   gimbal_control_pub_ = nh_.advertise<sensor_msgs::JointState>("gimbals_ctrl", 1);
-  // rosParamInit();
+  haptics_switch_sub_ = nh_.subscribe("haptics_switch", 1, &TwinHammerController::HapticsSwitchCallback, this);
+  haptics_wrench_sub_ = nh_.subscribe("haptics_wrench", 1, &TwinHammerController::HapticsWrenchCallback, this);
+
+  haptics_switch_ = false;
+  haptics_force_ = Eigen::Vector3d::Zero();
+  haptics_torque_ = Eigen::Vector3d::Zero();
+  rosParamInit();
+}
+
+void TwinHammerController::rosParamInit()
+{
+  ros::NodeHandle control_nh(nh_, "controller");
+  getParam<bool>(control_nh, "use_haptics", use_haptics_flag_, true);
+}
+
+void TwinHammerController::HapticsSwitchCallback(std_msgs::Int8 msg)
+{
+  int i = msg.data;
+  if(i==1){haptics_switch_ = true;}
+  if(i==0){
+    haptics_switch_ = false;
+    haptics_force_ = Eigen::Vector3d::Zero();
+    haptics_torque_ = Eigen::Vector3d::Zero();
+  }
+  // std::cout << "switch" << haptics_switch_ << std::endl;
+}
+
+void TwinHammerController::HapticsWrenchCallback(geometry_msgs::WrenchStamped msg)
+{
+  haptics_force_(0) = msg.wrench.force.x;
+  haptics_force_(1) = msg.wrench.force.y;
+  haptics_force_(2) = msg.wrench.force.z;
+  haptics_torque_(0) = msg.wrench.torque.x;
+  haptics_torque_(1) = msg.wrench.torque.y;
+  haptics_torque_(2) = msg.wrench.torque.z;
+  // std::cout << "wrench_x" << haptics_wrench_(0) << std::endl;
 }
 
 void TwinHammerController::controlCore()
 {
   PoseLinearController::controlCore();
+  tf::Vector3 target_acc_w(0.0,0.0,0.0);
   tf::Matrix3x3 uav_rot = estimator_->getOrientation(Frame::COG, estimate_mode_);
-  tf::Vector3 target_acc_w(pid_controllers_.at(X).result(),
+  if(use_haptics_flag_)
+  {
+    tf::Vector3 tf_haptics_force(haptics_force_.x(), haptics_force_.y(), haptics_force_.z());
+    target_acc_w = tf_haptics_force;
+  }
+  else
+  {
+    tf::Vector3 pid_result(pid_controllers_.at(X).result(),
                            pid_controllers_.at(Y).result(),
                            pid_controllers_.at(Z).result());
+    target_acc_w = pid_result;
+  }
   tf::Vector3 target_acc_cog = uav_rot.inverse() * target_acc_w;
-  Eigen::VectorXd target_wrench_acc_cog = Eigen::VectorXd::Zero(6);
+  Eigen::VectorXd target_wrench_acc_cog = Eigen::VectorXd::Zero(6);  
   target_wrench_acc_cog.head(3) = Eigen::Vector3d(target_acc_cog.x(),target_acc_cog.y(),target_acc_cog.z());
 
-  double target_ang_acc_x = pid_controllers_.at(ROLL).result();
-  double target_ang_acc_y = pid_controllers_.at(PITCH).result();
-  double target_ang_acc_z = pid_controllers_.at(YAW).result();
+  double target_ang_acc_x = 0.0;
+  double target_ang_acc_y = 0.0;
+  double target_ang_acc_z = 0.0;
+
+  if(use_haptics_flag_)
+  {
+    target_ang_acc_x = haptics_torque_.x();
+    target_ang_acc_y = haptics_torque_.y();
+    target_ang_acc_z = haptics_torque_.z();
+  }
+  else
+  {
+    target_ang_acc_x = pid_controllers_.at(ROLL).result();
+    target_ang_acc_y = pid_controllers_.at(PITCH).result();
+    target_ang_acc_z = pid_controllers_.at(YAW).result();
+  }
   target_wrench_acc_cog.tail(3) = Eigen::Vector3d(target_ang_acc_x,target_ang_acc_y,target_ang_acc_z);
 
   pid_msg_.roll.total.at(0) = target_ang_acc_x;
@@ -120,15 +178,6 @@ void TwinHammerController::sendCmd()
   }
   gimbal_control_pub_.publish(gimbal_control_msg);
 }
-
-// void TwinHammerController::rosParamInit()
-// {
-//   ros::NodeHandle control_nh(nh_, "controller");
-//   getParam<int>(control_nh, "gimbal_dof", gimbal_dof_, 1);
-//   getParam<bool>(control_nh, "gimbal_calc_in_fc", gimbal_calc_in_fc_, true);
-//   getParam<bool>(control_nh, "i_term_rp_calc_in_pc", i_term_rp_calc_in_pc_, false);
-// }
-
 
 /* plugin registration */
 #include <pluginlib/class_list_macros.h>

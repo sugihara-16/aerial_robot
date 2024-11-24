@@ -2,6 +2,8 @@ aerial_robot_control_name: aerial_robot_control/twin_hammer_controller
 
 controller:
 
+  use_haptics: true
+
   xy:
     p_gain: 3.6
     i_gain: 0.03

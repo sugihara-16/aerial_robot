@@ -265,6 +265,29 @@
    <axis xyz="0 0 1"/>
  </joint>
 
+ <!-- when fix main body  -->
+ <link name="dummy_weight">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="100"/>
+      <inertia
+          ixx="100" ixy="100" ixz="100"
+          iyy="100" iyz="100"
+          izz="100"/>
+    </inertial>
+    <collision>
+     <origin rpy="0 0 0" xyz="0 0 0"/>
+     <geometry>
+        <box size="0.5 0.5 1.0"/>
+     </geometry>
+   </collision>
+
+ </link>
+ <joint name="dummy_weight_joint" type="fixed">
+    <parent link="dummy_weight"/>
+    <child link="root"/>
+    <origin rpy="0 0 0" xyz="0 0 1.0"/>
+  </joint>
 
  <!-- main_body -->
  <link name="main_body">

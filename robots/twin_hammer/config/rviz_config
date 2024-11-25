@@ -90,6 +90,8 @@ Visualization Manager:
           Value: true
         twin_hammer/thrust4:
           Value: true
+        twin_hammer/dummy_weight:
+          Value: true
         world:
           Value: true
       Marker Alpha: 1
@@ -100,30 +102,31 @@ Visualization Manager:
       Show Names: true
       Tree:
         world:
-          twin_hammer/root:
-            twin_hammer/cog:
-              {}
-            twin_hammer/main_body:
-              twin_hammer/gimbal1_roll_module:
-                twin_hammer/gimbal1_pitch_module:
-                  twin_hammer/edf1_left:
-                    {}
-                  twin_hammer/edf1_right:
-                    {}
-                  twin_hammer/thrust1:
-                    {}
-                  twin_hammer/thrust3:
-                    {}
-              twin_hammer/gimbal2_roll_module:
-                twin_hammer/gimbal2_pitch_module:
-                  twin_hammer/edf2_left:
-                    {}
-                  twin_hammer/edf2_right:
-                    {}
-                  twin_hammer/thrust2:
-                    {}
-                  twin_hammer/thrust4:
-                    {}
+          twin_hammer/dummy_weight:
+            twin_hammer/root:
+              twin_hammer/cog:
+                {}
+              twin_hammer/main_body:
+                twin_hammer/gimbal1_roll_module:
+                  twin_hammer/gimbal1_pitch_module:
+                    twin_hammer/edf1_left:
+                      {}
+                    twin_hammer/edf1_right:
+                      {}
+                    twin_hammer/thrust1:
+                      {}
+                    twin_hammer/thrust3:
+                      {}
+                twin_hammer/gimbal2_roll_module:
+                  twin_hammer/gimbal2_pitch_module:
+                    twin_hammer/edf2_left:
+                      {}
+                    twin_hammer/edf2_right:
+                      {}
+                    twin_hammer/thrust2:
+                      {}
+                    twin_hammer/thrust4:
+                      {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -201,6 +204,11 @@ Visualization Manager:
           Show Trail: false
           Value: true
         thrust4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        dummy_weight:
           Alpha: 1
           Show Axes: false
           Show Trail: false

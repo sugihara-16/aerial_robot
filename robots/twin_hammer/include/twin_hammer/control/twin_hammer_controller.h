@@ -3,6 +3,7 @@
 #pragma once
 #include <aerial_robot_control/control/base/pose_linear_controller.h>
 #include <twin_hammer/model/twin_hammer_model.h>
+#include <nlopt.hpp>
 // #include <gimbalrotor/control/gimbalrotor_controller.h>
 namespace aerial_robot_control
 {
@@ -19,8 +20,18 @@ namespace aerial_robot_control
                     double ctrl_loop_rate
                     ) override;
 
+    inline boost::shared_ptr<TwinHammerModel> getHammerModel() { return twin_hammer_model_;}
+    const Eigen::Vector3d getHapticsForce() { return haptics_force_; }
+    const Eigen::Vector3d getHapticsTorque() { return haptics_torque_; }
+    const Eigen::VectorXd getTargetWrencAccCog() { return target_wrench_acc_cog_; }
+
   private:
     boost::shared_ptr<TwinHammerModel> twin_hammer_model_;
+    boost::shared_ptr<nlopt::opt> nl_solver_;
+    std::vector<double> opt_x_, prev_opt_x_;
+    double gimbal_roll_delta_angle_;
+    double gimbal_pitch_delta_angle_;
+
     ros::Publisher flight_cmd_pub_;
     ros::Publisher gimbal_control_pub_;
     ros::Subscriber haptics_switch_sub_;
@@ -28,10 +39,13 @@ namespace aerial_robot_control
     std::vector<float> target_base_thrust_;
     std::vector<double> target_gimbal_angles_;
     Eigen::VectorXd target_vectoring_f_;
+    Eigen::VectorXd target_wrench_acc_cog_;
+
     bool use_haptics_flag_;
     bool haptics_switch_;
     Eigen::Vector3d haptics_force_;
     Eigen::Vector3d haptics_torque_;
+
     void sendCmd() override;
     void HapticsSwitchCallback(std_msgs::Int8 msg);
     void HapticsWrenchCallback(geometry_msgs::WrenchStamped msg);

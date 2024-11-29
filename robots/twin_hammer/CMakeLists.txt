@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+find_package(NLopt REQUIRED)
+
 find_package(Eigen3 REQUIRED)
 
 catkin_package(
@@ -34,10 +36,11 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
+  ${NLOPT_INCLUDE_DIRS}
 )
 
 add_library(twin_hammer_controller src/control/twin_hammer_controller.cpp)
-target_link_libraries(twin_hammer_controller ${catkin_LIBRARIES})
+target_link_libraries(twin_hammer_controller ${catkin_LIBRARIES} ${NLOPT_LIBRARIES})
 
 add_library(twin_hammer_model src/model/twin_hammer_model.cpp)
 target_link_libraries(twin_hammer_model ${catkin_LIBRARIES})

@@ -27,8 +27,6 @@ namespace aerial_robot_control
 
   private:
     boost::shared_ptr<TwinHammerModel> twin_hammer_model_;
-    boost::shared_ptr<nlopt::opt> nl_solver_;
-    std::vector<double> opt_x_, prev_opt_x_;
     double gimbal_roll_delta_angle_;
     double gimbal_pitch_delta_angle_;
 
@@ -38,6 +36,7 @@ namespace aerial_robot_control
     ros::Subscriber haptics_wrench_sub_;
     std::vector<float> target_base_thrust_;
     std::vector<double> target_gimbal_angles_;
+    std::vector<double> prev_gimbal_angles_;
     Eigen::VectorXd target_vectoring_f_;
     Eigen::VectorXd target_wrench_acc_cog_;
 

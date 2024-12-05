@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot
-   xmlns:xacro="http://www.ros.org/wiki/xacro" name="Twin_Hammer" >
+   xmlns:xacro="http://www.ros.org/wiki/xacro" name="twin_hammer" >
   
  <baselink name="fc" />
  <thrust_link name="thrust" />
@@ -35,6 +35,22 @@
    </gazebo>
  </xacro:macro>
 
+ <!-- ft_sensor -->
+ <xacro:macro name="add_ft_sensor" params="joint_name sensor_topic_name">
+  <gazebo reference="${joint_name}">
+    <sensor type="force_torque" name="${joint_name}_sensor">
+      <always_on>true</always_on>
+      <update_rate>100.0</update_rate>
+      <joint_name>${joint_name}</joint_name>
+      <plugin name="${joint_name}_gazebo_ros_ft_sensor" filename="libgazebo_ros_force_torque.so">
+        <ros>
+          <namespace>/twin_hammer</namespace>
+          <remapping>sensor_data:=${sensor_topic_name}</remapping>
+        </ros>
+      </plugin>
+    </sensor>
+  </gazebo>
+ </xacro:macro>
  <!-- <xacro:macro name="rotor" params="number"> -->
  
 
@@ -281,13 +297,19 @@
         <box size="0.5 0.5 1.0"/>
      </geometry>
    </collision>
-
  </link>
  <joint name="dummy_weight_joint" type="fixed">
     <parent link="dummy_weight"/>
     <child link="root"/>
     <origin rpy="0 0 0" xyz="0 0 1.0"/>
   </joint>
+  <!-- ft_sensor_gazebo joint -->
+  <!-- <joint name="root_to_dummyweight_joint" type="fixed">
+    <parent link="dummy_weight"/>
+    <child link="root"/>
+    <origin xyz="0 0 1.0" rpy="0 0 0"/>
+    <xacro:add_ft_sensor joint_name="root_to_dummyweight_joint" sensor_topic_name="/gazebo_ft_sensor"/>
+  </joint> -->
 
  <!-- main_body -->
  <link name="main_body">
@@ -319,7 +341,6 @@
    </collision>
  </link>
 
-
  <!-- spinal -->
  <link name="fc">
  <inertial>
@@ -341,7 +362,6 @@
 
  <xacro:gimbal_unit id="1" />
  <xacro:gimbal_unit id="2" />
-
 
 </robot>
 

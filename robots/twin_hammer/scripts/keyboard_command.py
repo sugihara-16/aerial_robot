@@ -176,23 +176,23 @@ if __name__=="__main__":
                         if key == '0':
                                 input_num = 0.0
                         if key == '1':
-                                input_num = 0.1
+                                input_num = 1.0
                         if key == '2':
-                                input_num = 0.2
+                                input_num = 2.0
                         if key == '3':
-                                input_num = 0.3
+                                input_num = 3.0
                         if key == '4':
-                                input_num = 0.4
+                                input_num = 4.0
                         if key == '5':
-                                input_num = 0.5
+                                input_num = 5.0
                         if key == '6':
-                                input_num = 0.6
+                                input_num = -4.0
                         if key == '7':
-                                input_num = 0.7
+                                input_num = -3.0
                         if key == '8':
-                                input_num = 0.8
+                                input_num = -2.0
                         if key == '9':
-                                input_num = 0.9
+                                input_num = -1.0
                         des_input = input_num * wrench_scale
                         # msg = "input is "+str(des_input)+"N"
 

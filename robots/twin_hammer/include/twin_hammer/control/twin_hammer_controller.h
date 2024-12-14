@@ -29,6 +29,7 @@ namespace aerial_robot_control
     boost::shared_ptr<TwinHammerModel> twin_hammer_model_;
     double gimbal_roll_delta_angle_;
     double gimbal_pitch_delta_angle_;
+    double gravity_acc_;
 
     ros::Publisher flight_cmd_pub_;
     ros::Publisher gimbal_control_pub_;

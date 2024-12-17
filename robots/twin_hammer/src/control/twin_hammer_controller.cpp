@@ -162,12 +162,6 @@ void TwinHammerController::controlCore()
   target_wrench_acc_cog_5d.head(3) = target_wrench_acc_cog_.head(3);
   target_wrench_acc_cog_5d.tail(2) = target_wrench_acc_cog_.tail(2);
   target_vectoring_f_ = q1_mat_inv * target_wrench_acc_cog_5d;
-  // for(int i=0; i<q1_mat_inv.rows(); i++){
-  //   for(int j=0; j<q1_mat_inv.cols(); j++){
-  //     std::cout << q1_mat_inv(i,j) << ",";
-  //    }
-  //   std::cout << std::endl;
-  // }
 
   last_col = 0;
   double virtual_thrust_1 = 0;
@@ -194,8 +188,8 @@ void TwinHammerController::controlCore()
 
     target_gimbal_angles_.at(2*i) = gimbal_i_roll;
     target_gimbal_angles_.at(2*i+1) = gimbal_i_pitch;
-    // std::cout << "gimbal_i_roll is " << gimbal_i_roll << std::endl;
-    // std::cout << "gimbal_i_pitch is " << gimbal_i_pitch << std::endl;
+    // std::cout << "gimbal" << i << "roll is " << gimbal_i_roll << std::endl;
+    // std::cout << "gimbal" << i << "pitch is " << gimbal_i_pitch << std::endl;
     last_col += 3;
   }
   for(int i=0; i<prev_gimbal_angles_.size(); i++){
@@ -223,30 +217,35 @@ void TwinHammerController::controlCore()
       q2_mat(1,i) = 1;
       pitch_angle = target_gimbal_angles_.at(3);
     }
-    double rotor_moment_arm = rotors_origin_from_cog.at(i)(1) * cos(pitch_angle);
-    if(rotor_moment_arm <=0.1){rotor_moment_arm = 0.0;}
+    // std::cout << "rotor" << i << "arm length is " << rotors_origin_from_cog.at(i)(1) << std::endl;
+    double rotor_moment_arm = abs(rotors_origin_from_cog.at(i)(1)) * cos(pitch_angle);
+    // if(rotor_moment_arm < 0.12){
+    //   rotor_moment_arm = 0.0;
+    // }
     if(i==0 || i==1){
       q2_mat(2,i) = rotor_moment_arm;
-      // q2_mat(2,i) = 0;
     }
     if(i==2 || i==3){
       q2_mat(2,i) = -rotor_moment_arm;
-      // q2_mat(2,i) = 0;
     }
   }
   Eigen::MatrixXd q2_mat_inv = aerial_robot_model::pseudoinverse(q2_mat);
-  for(int i=0; i<q2_mat.rows(); i++){
-    for(int j=0; j<q2_mat.cols(); j++){
-      std::cout << q2_mat(i,j) << ",";
-     }
-    std::cout << std::endl;
-  }
+  // for(int i=0; i<q2_mat.rows(); i++){
+  //   for(int j=0; j<q2_mat.cols(); j++){
+  //     std::cout << q2_mat(i,j) << ",";
+  //    }
+  //   std::cout << std::endl;
+  // }
+  // std::cout << "-----------" << std::endl;
 
   Eigen::VectorXd target_thrusts = q2_mat_inv * target_vec;
   for(int i=0; i<motor_num_; i++){
+    if(target_thrusts(i)<0){
+      ROS_WARN_STREAM("thrust at rotor " << i << "is minus value");
+      target_thrusts(i) = 0.0;
+    }
     target_base_thrust_.at(i) = target_thrusts(i);
   }
-  std::cout << "-----------" << std::endl;  
 }
 
 void TwinHammerController::sendCmd()

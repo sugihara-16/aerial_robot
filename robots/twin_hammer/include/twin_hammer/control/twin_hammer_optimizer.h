@@ -7,11 +7,11 @@
 // #include <gimbalrotor/control/gimbalrotor_controller.h>
 namespace aerial_robot_control
 {
-  class TwinHammerController: public PoseLinearController
+  class TwinHammerOptimizer: public PoseLinearController
   {
   public:
-    TwinHammerController();
-    ~TwinHammerController() = default;
+    TwinHammerOptimizer();
+    ~TwinHammerOptimizer() = default;
 
     void initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
                     boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,

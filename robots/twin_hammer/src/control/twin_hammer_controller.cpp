@@ -241,7 +241,7 @@ void TwinHammerController::controlCore()
   Eigen::VectorXd target_thrusts = q2_mat_inv * target_vec;
   for(int i=0; i<motor_num_; i++){
     if(target_thrusts(i)<0){
-      ROS_WARN_STREAM("thrust at rotor " << i << "is minus value");
+      ROS_WARN_STREAM("thrust at rotor " << i << " is minus value");
       target_thrusts(i) = 0.0;
     }
     target_base_thrust_.at(i) = target_thrusts(i);

@@ -23,7 +23,7 @@ namespace aerial_robot_control
     inline boost::shared_ptr<TwinHammerModel> getHammerModel() { return twin_hammer_model_;}
     const Eigen::Vector3d getHapticsForce() { return haptics_force_; }
     const Eigen::Vector3d getHapticsTorque() { return haptics_torque_; }
-    const Eigen::VectorXd getTargetWrencAccCog() { return target_wrench_acc_cog_; }
+    const Eigen::VectorXd getTargetWrenchAccCog() { return target_wrench_acc_cog_; }
 
   private:
     boost::shared_ptr<TwinHammerModel> twin_hammer_model_;

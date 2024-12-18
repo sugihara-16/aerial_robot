@@ -45,11 +45,7 @@ namespace
     TwinHammerOptimizer *planner = reinterpret_cast<TwinHammerOptimizer*>(planner_ptr);
     auto twin_hammer_model = planner->getHammerModel();
     int virtual_rotor_num = twin_hammer_model->getRotorNum()/2;
-    std::cout << "virtual rotor num is " << virtual_rotor_num << std::endl;
     Eigen::VectorXd target_wrench = planner->getTargetWrenchAccCog();
-    for(int i=0; i<target_wrench.size(); i++){
-      std::cout << "target wrench " << i << "is" << target_wrench[i] << std::endl;
-    }
     Eigen::MatrixXd full_q_mat = Eigen::MatrixXd::Zero(6, 3*virtual_rotor_num);
     double mass_inv = 1/twin_hammer_model->getMass();
     Eigen::Matrix3d inertia = twin_hammer_model->getInertia<Eigen::Matrix3d>();
@@ -58,10 +54,9 @@ namespace
     double rotor1_x = (rotors_origin_from_cog.at(0)[0] + rotors_origin_from_cog.at(2)[0])/2;
     double rotor1_y = (rotors_origin_from_cog.at(0)[1] + rotors_origin_from_cog.at(2)[1])/2;
     double rotor1_z = (rotors_origin_from_cog.at(0)[2] + rotors_origin_from_cog.at(2)[2])/2;
-    double rotor2_x = (rotors_origin_from_cog.at(1)[0] + rotors_origin_from_cog.at(4)[0])/2;
-    double rotor2_y = (rotors_origin_from_cog.at(1)[1] + rotors_origin_from_cog.at(4)[1])/2;
-    double rotor2_z = (rotors_origin_from_cog.at(1)[2] + rotors_origin_from_cog.at(4)[2])/2;
-    std::cout << "rotor1_x " << rotor1_x << std::endl;
+    double rotor2_x = (rotors_origin_from_cog.at(1)[0] + rotors_origin_from_cog.at(3)[0])/2;
+    double rotor2_y = (rotors_origin_from_cog.at(1)[1] + rotors_origin_from_cog.at(3)[1])/2;
+    double rotor2_z = (rotors_origin_from_cog.at(1)[2] + rotors_origin_from_cog.at(3)[2])/2;
     Eigen::Vector3d rotor1_origin_from_cog(rotor1_x, rotor1_y, rotor1_z);
     Eigen::Vector3d rotor2_origin_from_cog(rotor2_x, rotor2_y, rotor2_z);
     rotor1_origin_from_cog[1] += x[3];
@@ -138,7 +133,7 @@ void TwinHammerOptimizer::initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
   opt_x_.at(6) = 5.0;
   nl_solver_ -> set_min_objective(minimizeThrust, this);
   nl_solver_ -> add_equality_mconstraint(WrenchConstraint, this, std::vector<double>(6,1e-8));
-  nl_solver_ -> set_xtol_rel(1e-2);
+  nl_solver_ -> set_xtol_rel(1e-1);
   nl_solver_ -> set_maxeval(1000);
 
   target_base_thrust_.resize(motor_num_);
@@ -258,9 +253,9 @@ void TwinHammerOptimizer::controlCore()
     lb.at(i+1) = 0.0;
     lb.at(i+2) = 0.0;
     lb.at(i+3) = -0.212;     // This is hard cording. Rewrite to get link length from robot model 
-    ub.at(i) = 30.0;
-    ub.at(i+1) = 30.0;
-    ub.at(i+2) = 30.0;
+    ub.at(i) = 10.0;
+    ub.at(i+1) = 10.0;
+    ub.at(i+2) = 10.0;
     ub.at(i+3) = 0.212;     // This is hard cording. Rewrite to get link length from robot model 
   }
   nl_solver_ -> set_lower_bounds(lb);
@@ -312,54 +307,6 @@ void TwinHammerOptimizer::controlCore()
     last_col += 4;
   }
   std::cout << "--------------" << std::endl;
-
-
-
-  /*
-  Eigen::MatrixXd full_q_mat = Eigen::MatrixXd::Zero(6, 4*virtual_rotor_num);
-
-  double mass_inv = 1/twin_hammer_model_->getMass();
-  Eigen::Matrix3d inertia = twin_hammer_model_->getInertia<Eigen::Matrix3d>();
-  Eigen::Matrix3d inertia_inv = (twin_hammer_model_->getInertia<Eigen::Matrix3d>()).inverse();
-  std::vector<Eigen::Vector3d> rotors_origin_from_cog = twin_hammer_model_->getRotorsOriginFromCog<Eigen::Vector3d>();
-
-  double t = ros::Time::now().toSec();
-
-  Eigen::MatrixXd wrench_map = Eigen::MatrixXd::Zero(6,3);
-  wrench_map.block(0,0,3,3) = Eigen::MatrixXd::Identity(3,3);
-  int last_col = 0;
-
-  for(int i=0; i<virtual_rotor_num; i++)
-  {
-    Eigen::Matrix3d skew_rotor_mat = aerial_robot_model::skew(rotors_origin_from_cog.at(i));
-    wrench_map.block(3,0,3,3) = aerial_robot_model::skew(rotors_origin_from_cog.at(i));
-    full_q_mat.middleCols(last_col, 3) = wrench_map;
-    last_col += 4;
-  }
-
-  full_q_mat.topRows(3) = mass_inv * full_q_mat.topRows(3);
-  full_q_mat.bottomRows(3) = inertia_inv * full_q_mat.bottomRows(3);
-  Eigen::MatrixXd full_q_mat_inv = aerial_robot_model::pseudoinverse(full_q_mat);
-  target_vectoring_f_ = full_q_mat_inv * target_wrench_acc_cog_;
-  last_col = 0;
-
-  for(int i=0; i<virtual_rotor_num; i++)
-  {
-    Eigen::Vector3d f_i = target_vectoring_f_.segment(last_col,3);
-
-    target_base_thrust_.at(i) = f_i.norm();
-    // std::cout << "rotor" << i << ":target_base_thrust is " << target_base_thrust_.at(i) << std::endl;
- 
-    double gimbal_i_roll = atan2(-f_i.y(), f_i.z());
-    double gimbal_i_pitch = atan2(f_i.x(), -f_i.y() * sin(gimbal_i_roll) + f_i.z() * cos(gimbal_i_roll));
-    // target_gimbal_angles_.at(2*i) = gimbal_i_roll;
-    // target_gimbal_angles_.at(2*i+1) = gimbal_i_pitch;
-    // std::cout << "gimbal_i_roll is " << gimbal_i_roll << std::endl;
-    // std::cout << "gimbal_i_pitch is " << gimbal_i_pitch << std::endl;
-    last_col += 4;
-  } 
-  // std::cout << "-----------" << std::endl;
-  */
 }
 
 void TwinHammerOptimizer::sendCmd()

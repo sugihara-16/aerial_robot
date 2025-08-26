@@ -311,10 +311,6 @@ void NinjaNavigator::calcCenterOfMoving()
       }
     else
       {
-        KDL::Frame com_frame;
-        KDL::Chain chain;
-        std::string left_dock = "pitch_connect_point";
-        std::string right_dock = "yaw_connect_point";
         if(my_id_ == leader_id_)
           {
             KDL::Frame raw_cog2base; // co2base conversion without desire coord process
@@ -324,6 +320,10 @@ void NinjaNavigator::calcCenterOfMoving()
           }
         else
           {
+            KDL::Frame ldfc_2_myfc;
+            KDL::Chain chain;
+            std::string left_dock = "pitch_connect_point";
+            std::string right_dock = "yaw_connect_point";
             if (my_id_ < leader_id_)
               {
                 /*Calculate FK*/
@@ -350,7 +350,7 @@ void NinjaNavigator::calcCenterOfMoving()
                             ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
                             return;
                           }
-                        com_frame = com_frame * frame;
+                        ldfc_2_myfc = ldfc_2_myfc * frame;
                       }
                     else if(my_id_ < it.first && it.first < leader_id_)
                       {
@@ -368,7 +368,7 @@ void NinjaNavigator::calcCenterOfMoving()
                           ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
                           return;
                         }
-                        com_frame = com_frame * frame;
+                        ldfc_2_myfc = ldfc_2_myfc * frame;
                       }
                     else if( it.first == leader_id_)
                       {
@@ -385,14 +385,14 @@ void NinjaNavigator::calcCenterOfMoving()
                           ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
                           return;
                         }
-                        com_frame = com_frame * frame;
+                        ldfc_2_myfc = ldfc_2_myfc * frame;
                       }
                     else if(leader_id_ < it.first)
                       {
                         continue;
                       }
                   }
-                com_frame = com_frame.Inverse();
+                ldfc_2_myfc = ldfc_2_myfc.Inverse();
               }
             else
               {
@@ -419,7 +419,7 @@ void NinjaNavigator::calcCenterOfMoving()
                           ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
                           return;
                         }
-                        com_frame = com_frame * frame;
+                        ldfc_2_myfc = ldfc_2_myfc * frame;
                       }
                     else if(leader_id_ < it.first && it.first < my_id_)
                       {
@@ -437,7 +437,7 @@ void NinjaNavigator::calcCenterOfMoving()
                           ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
                           return;
                         }
-                        com_frame = com_frame * frame;
+                        ldfc_2_myfc = ldfc_2_myfc * frame;
                       }
                     else if(it.first == my_id_)
                       {
@@ -454,8 +454,8 @@ void NinjaNavigator::calcCenterOfMoving()
                           ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
                           return;
                         }
-                        com_frame = com_frame * frame;
-                        test_frame_ = com_frame;
+                        ldfc_2_myfc = ldfc_2_myfc * frame;
+                        test_frame_ = ldfc_2_myfc;
                       }
                     else if(my_id_ < it.first)
                       {
@@ -463,9 +463,9 @@ void NinjaNavigator::calcCenterOfMoving()
                       }
                   }
               }
-            KDL::Frame raw_cog2base; // co2base conversion without desire coord process
+            KDL::Frame raw_cog2base; // co2base conversion without desire coord process. This process is assuming fc->cog conversion is universal among all modules(bad).
             raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
-            setCoM2Base(raw_cog2base * com_frame);
+            setCoM2Base(raw_cog2base * ldfc_2_myfc);
           }
       }
 

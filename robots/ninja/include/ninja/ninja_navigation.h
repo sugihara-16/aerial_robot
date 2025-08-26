@@ -213,6 +213,7 @@ namespace aerial_robot_navigation
     void jointsCtrlCallback(const sensor_msgs::JointStateConstPtr& state);
     void comRotationProcess();
     void comMovingProcess();
+    KDL::Frame calcCom2BaseTransform(int module_id);
 
     ros::Publisher target_com_pose_pub_;
     boost::shared_ptr<NinjaRobotModel> ninja_robot_model_;

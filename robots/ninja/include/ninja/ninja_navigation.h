@@ -32,6 +32,27 @@ namespace aerial_robot_navigation
      RIGHT_DOCK
     };
 
+
+  /*Helper functions*/
+  auto skew = [](const Eigen::Vector3d& v){
+                Eigen::Matrix3d S;
+                S <<     0, -v.z(),  v.y(),
+                  v.z(),     0, -v.x(),
+                  -v.y(),  v.x(),     0;
+                return S;
+              };
+
+  auto makeWrenchXstar = [](const Eigen::Affine3d& T) {
+                           const auto& R = T.rotation();
+                           const auto& p = T.translation();
+                           Eigen::Matrix<double, 6, 6> X = Eigen::Matrix<double, 6, 6>::Zero();
+                           X.topLeftCorner<3,3>()     = R;
+                           X.bottomRightCorner<3,3>() = R;
+                           X.bottomLeftCorner<3,3>()  = skew(p) * R; // tau += p x (R f)
+                           return X;
+                         };
+
+
   class ModuleData
   {
   public:
@@ -47,6 +68,10 @@ namespace aerial_robot_navigation
     KDL::JntArray goal_joint_pos_;
     KDL::JntArray start_joint_pos_;
 
+    // Wrench transform matrices: maps wrench expressed in COG to each target frame
+    Eigen::Matrix<double, 6, 6> cog2yaw_connect_;
+    Eigen::Matrix<double, 6, 6> cog2pitch_connect_;
+    Eigen::Matrix<double, 6, 6> cog2com_;
   };
   class NinjaNavigator : public BeetleNavigator
   {
@@ -161,6 +186,26 @@ namespace aerial_robot_navigation
     {
       err_omega_candidate_ = value;
     }
+
+    /* Accessors for COM->COG wrench transform (6x6)*/
+    inline void setCom2CogWrenchXStar(const Eigen::Matrix<double, 6, 6>& X)
+    {
+      com2cog_wrench_xstar_ = X;
+    }
+    
+    inline Eigen::Matrix<double, 6, 6> getCom2CogWrenchXStar() const
+    {
+      return com2cog_wrench_xstar_;
+    }
+
+    inline void setCog2ComWrenchXStar(const Eigen::Matrix<double, 6, 6>& X) {
+      cog2com_wrench_xstar_ = X;
+    }
+    
+    inline Eigen::Matrix<double, 6, 6> getCog2ComWrenchXStar() const
+    {
+      return cog2com_wrench_xstar_;
+    }
     
         
     inline void setFinalTargetPosCandX( float value){  target_final_pos_candidate_.setX(value);}
@@ -214,6 +259,7 @@ namespace aerial_robot_navigation
     void comRotationProcess();
     void comMovingProcess();
     KDL::Frame calcCom2BaseTransform(int module_id);
+    void calcModulesFkTransform();
 
     ros::Publisher target_com_pose_pub_;
     boost::shared_ptr<NinjaRobotModel> ninja_robot_model_;
@@ -256,6 +302,9 @@ namespace aerial_robot_navigation
     KDL::Frame test_frame_;
     KDL::Frame curr_com_pose_;
     KDL::Frame prev_com_pose_;
+
+    Eigen::Matrix<double, 6, 6> com2cog_wrench_xstar_;
+    Eigen::Matrix<double, 6, 6> cog2com_wrench_xstar_;
 
     int module_joint_num_;
     double default_morphing_vel_;

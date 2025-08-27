@@ -51,6 +51,7 @@ void NinjaNavigator::update()
   updateEntSysState();
   updateMyState();
   calcCenterOfMoving();
+  calcModulesFkTransform();
 
   if(ros::Time::now().toSec() - prev_morphing_stamp_ > morphing_process_interval_)
     {
@@ -86,13 +87,16 @@ void NinjaNavigator::update()
         KDL::Frame current_com;
         KDL::Frame target_cog_pose;
         KDL::Frame target_com_pose;
-        KDL::Frame raw_base2cog; // base2cog conversion without desire coord process
+        KDL::Frame raw_base2cog;
+        KDL::Frame raw_cog2base;
         geometry_msgs::TransformStamped transformStamped;
         target_com_pose.M = target_com_rot_;
         tf::vectorTFToKDL(getTargetPosCand(),target_com_pose.p);
         raw_base2cog.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
+        raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
         // target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse();
-        target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>() * raw_base2cog;
+        // target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>() * raw_base2cog;
+        target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>().Inverse() * raw_cog2base;
 
         geometry_msgs::TransformStamped tf;
 
@@ -213,10 +217,12 @@ void NinjaNavigator::calcCenterOfMoving()
   geometry_msgs::Point cog_com_dist_msg;
   if(!current_assembled_){
 
-    KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-    raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+    KDL::Frame raw_cog2base;
+    raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
     KDL::Frame com_frame = raw_cog2base;
     setCoM2Base(com_frame);
+    setCog2ComWrenchXStar(Eigen::Matrix<double, 6, 6>::Identity());
+    setCom2CogWrenchXStar(Eigen::Matrix<double, 6, 6>::Identity());
     cog_com_dist_msg.x = Cog2CoM_.p.x();
     cog_com_dist_msg.y = Cog2CoM_.p.y();
     cog_com_dist_msg.z = Cog2CoM_.p.z();
@@ -305,22 +311,37 @@ void NinjaNavigator::calcCenterOfMoving()
         KDL::Frame com_frame;
         com_frame.p = KDL::Rotation::RPY(0,0,com_cog_arg) * KDL::Vector(pseudo_cog_com_dist_,0,0);
         com_frame.M = KDL::Rotation::RPY(0,0,M_PI + com_cog_arg);
-        KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-        raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+        KDL::Frame raw_cog2base;
+        raw_cog2base.p =ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
         setCoM2Base(raw_cog2base * com_frame);
+        Eigen::Matrix<double, 6, 6> InitWrenchTransMat = Eigen::Matrix<double, 6, 6>::Identity();
+        setCom2CogWrenchXStar(InitWrenchTransMat);
+        setCog2ComWrenchXStar(InitWrenchTransMat);
       }
     else
       {
         if(my_id_ == leader_id_)
           {
-            KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-            raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+            KDL::Frame raw_cog2base;
+            raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
             KDL::Frame com_frame = raw_cog2base;
             setCoM2Base(com_frame);
+            Eigen::Matrix<double, 6, 6> InitWrenchTransMat = Eigen::Matrix<double, 6, 6>::Identity();
+            setCom2CogWrenchXStar(InitWrenchTransMat);
+            setCog2ComWrenchXStar(InitWrenchTransMat);
           }
         else
           {
             setCoM2Base(calcCom2BaseTransform(my_id_));
+            // --- Compute 6x6 wrench transform from COM to COG and store via accessor ---
+            // Build ^cogT_com = (^baseT_cog)^{-1} * (^baseT_com)
+            const Eigen::Affine3d T_com2base = getCom2Base<Eigen::Affine3d>();
+            const Eigen::Affine3d T_cog2base = ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>().inverse();
+            const Eigen::Affine3d T_com2cog = T_cog2base.inverse() * T_com2base;
+            const Eigen::Affine3d T_cog2com = T_com2base.inverse() * T_cog2base;
+            
+            setCom2CogWrenchXStar(makeWrenchXstar(T_com2cog));
+            setCog2ComWrenchXStar(makeWrenchXstar(T_cog2com));
           }
       }
 
@@ -347,9 +368,7 @@ KDL::Frame NinjaNavigator::calcCom2BaseTransform(int module_id)
   if(module_id == leader_id_)
   {
     KDL::Frame raw_cog2base;
-    raw_cog2base.p =
-      ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() *
-      ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+    raw_cog2base.p =ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
     return raw_cog2base;
   }
 
@@ -429,7 +448,7 @@ KDL::Frame NinjaNavigator::calcCom2BaseTransform(int module_id)
         continue;
       }
     }
-    ldfc_2_myfc = ldfc_2_myfc.Inverse();
+    // ldfc_2_myfc = ldfc_2_myfc.Inverse();
   }
   else
   {
@@ -503,15 +522,85 @@ KDL::Frame NinjaNavigator::calcCom2BaseTransform(int module_id)
         continue;
       }
     }
+    ldfc_2_myfc = ldfc_2_myfc.Inverse();  
   }
 
-  // co2base conversion without desire coord process. This process is assuming fc->cog conversion is universal among all modules(bad).
   KDL::Frame raw_cog2fc;
-  raw_cog2fc.p =
-    ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() *
-    ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+  raw_cog2fc.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
 
-  return raw_cog2fc * ldfc_2_myfc;
+  // return raw_cog2fc * ldfc_2_myfc;
+  return ldfc_2_myfc * raw_cog2fc;
+}
+
+void NinjaNavigator::calcModulesFkTransform()
+{
+  if (assembled_modules_data_.empty()) return;
+
+  const std::string left_dock  = "pitch_connect_point";
+  const std::string right_dock = "yaw_connect_point";
+
+  for (auto& it : assembled_modules_data_)
+  {
+    const int id = it.first;
+    ModuleData& data = it.second;
+
+    // --- BASE -> yaw_connect_point (compute by FK) ---
+    KDL::Frame base2yaw_kdl = KDL::Frame::Identity();
+    {
+      KDL::Chain chain;
+      if (!data.module_tree_.getChain("fc", right_dock, chain))
+      {
+        ROS_ERROR_STREAM("Failed to get chain base->" << right_dock << " for module " << id);
+      }
+      else
+      {
+        KDL::ChainFkSolverPos_recursive fk_solver(chain);
+        KDL::Frame frame;
+        KDL::JntArray q(1);  // yaw only
+        q(0) = data.des_joint_pos_(YAW);
+        if (fk_solver.JntToCart(q, frame) >= 0) base2yaw_kdl = frame.Inverse();
+        else ROS_ERROR_STREAM("FK failed base->" << right_dock << " (module " << id << ")");
+      }
+    }
+    const Eigen::Affine3d base2yaw = aerial_robot_model::kdlToEigen(base2yaw_kdl); // ^baseT_yaw
+
+    // --- BASE -> pitch_connect_point (compute by FK) ---
+    KDL::Frame base2pitch_kdl = KDL::Frame::Identity();
+    {
+      KDL::Chain chain;
+      if (!data.module_tree_.getChain("fc", left_dock, chain))
+      {
+        ROS_ERROR_STREAM("Failed to get chain base->" << left_dock << " for module " << id);
+      }
+      else
+      {
+        KDL::ChainFkSolverPos_recursive fk_solver(chain);
+        KDL::Frame frame;
+        KDL::JntArray q(1) ; // pitch only
+        q(0) = data.des_joint_pos_(PITCH);
+        if (fk_solver.JntToCart(q, frame) >= 0) base2pitch_kdl = frame.Inverse();
+        else ROS_ERROR_STREAM("FK failed base->" << left_dock << " (module " << id << ")");
+      }
+    }
+    const Eigen::Affine3d base2pitch = aerial_robot_model::kdlToEigen(base2pitch_kdl); // ^baseT_pitch
+
+    // --- BASE -> COM: calcCom2BaseTransform(id) returns COM->BASE, so invert to get BASE->COM ---
+    const KDL::Frame base2com_kdl = calcCom2BaseTransform(id).Inverse();
+    const Eigen::Affine3d base2com = aerial_robot_model::kdlToEigen(base2com_kdl); // ^baseT_com
+
+    const Eigen::Affine3d T_cog2base = ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>().inverse();
+
+    // Build target-frame transforms ^targetT_cog for wrench passive transform:
+    // ^targetT_cog = (^targetT_base) * (^baseT_cog) = ( ^baseT_target )^{-1} * (^baseT_cog)
+    const Eigen::Affine3d cog2yaw_in_yaw     = base2yaw.inverse()   * T_cog2base;  // ^yawT_cog
+    const Eigen::Affine3d cog2pitch_in_pitch = base2pitch.inverse() * T_cog2base;  // ^pitchT_cog
+    const Eigen::Affine3d cog2com_in_com     = base2com.inverse()   * T_cog2base;  // ^comT_cog
+
+    // Store wrench transforms (COG -> target)
+    data.cog2yaw_connect_   = makeWrenchXstar(cog2yaw_in_yaw);
+    data.cog2pitch_connect_ = makeWrenchXstar(cog2pitch_in_pitch);
+    data.cog2com_           = makeWrenchXstar(cog2com_in_com);
+  }
 }
 
 void NinjaNavigator::convertTargetPosFromCoG2CoM()
@@ -548,11 +637,14 @@ void NinjaNavigator::convertTargetPosFromCoG2CoM()
   /*Target pose conversion*/
   KDL::Frame target_com_pose;
   KDL::Frame target_my_pose;
-  KDL::Frame raw_base2cog; // base2cog conversion without desire coord process
+  KDL::Frame raw_base2cog;
+  KDL::Frame raw_cog2base;
   target_com_pose.M = target_com_rot_;
   tf::vectorTFToKDL(getTargetPosCand(),target_com_pose.p);
   raw_base2cog.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
-  target_my_pose = target_com_pose * getCom2Base<KDL::Frame>() * raw_base2cog; // com -> cog
+  raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
+  // target_my_pose = target_com_pose * getCom2Base<KDL::Frame>() * raw_base2cog; // com -> cog
+  target_my_pose = target_com_pose * getCom2Base<KDL::Frame>().Inverse() * raw_cog2base;
 
   /*Target twist conversion*/
   // KDL::Vector target_com_vel;
@@ -564,7 +656,7 @@ void NinjaNavigator::convertTargetPosFromCoG2CoM()
   KDL::Twist target_my_twist;
   tf::vectorTFToKDL(getTargetVelCand(),target_com_twist.vel);
   tf::vectorTFToKDL(getTargetOmegaCand(),target_com_twist.rot);
-  target_my_twist = raw_base2cog * getCom2Base<KDL::Frame>() * target_com_twist; // com -> cog
+  target_my_twist = raw_base2cog * getCom2Base<KDL::Frame>().Inverse() * target_com_twist; // com -> cog
 
   tf::Vector3 target_pos, target_rot, target_vel, target_omega;
   double target_roll, target_pitch, target_yaw;

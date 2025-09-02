@@ -48,6 +48,12 @@ namespace aerial_robot_control
 
     aerial_robot_msgs::PoseControlPid com_motion_pid_msg_;
 
+    double lsq_reg_gain_ = 0.05;
+
+    double rho_ctc_;
+    Eigen::VectorXd prev_ctc_wrench_;
+    bool prev_ctc_valid_ = false;
+
   protected:
     void calcInteractionWrench() override;
     void externalWrenchEstimate() override;

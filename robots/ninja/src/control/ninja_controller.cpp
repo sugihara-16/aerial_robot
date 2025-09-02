@@ -235,11 +235,12 @@ namespace aerial_robot_control
     estimate_external_wrench_pub_.publish(wrench_msg);
 
     //convert extimated external wrench from cog to com coordinates
-    Eigen::VectorXd est_external_wrench_com = est_external_wrench_cog;
-    Eigen::Matrix3d cog2com = (ninja_navigator_->getCom2Base<Eigen::Affine3d>() * ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>().inverse()).rotation();
-    est_external_wrench_com.head(3) = cog2com * est_external_wrench_cog.head(3);
-    est_external_wrench_com.tail(3) = cog2com * est_external_wrench_cog.tail(3);
-
+    const Eigen::Matrix<double, 6, 1> W_cog = est_external_wrench_cog;
+    const Eigen::Matrix<double, 6, 6> Xstar_com_from_cog = ninja_navigator_->getCog2ComWrenchXStar();
+    const Eigen::Matrix<double, 6, 1> W_com = Xstar_com_from_cog * W_cog;
+    Eigen::VectorXd est_external_wrench_com(6);
+    est_external_wrench_com = W_com;
+    
     geometry_msgs::WrenchStamped wrench_msg_com;
     wrench_msg_com.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
     wrench_msg_com.header.frame_id = my_name + "/cog";
@@ -260,97 +261,175 @@ namespace aerial_robot_control
 
   void NinjaController::calcInteractionWrench()
   {
-    /* 1. calculate external wrench W_w for whole system (e.g. ground effects, model error and etc..)*/
-    Eigen::VectorXd W_w = Eigen::VectorXd::Zero(6);
-    Eigen::VectorXd W_sum = Eigen::VectorXd::Zero(6);
-    int module_num = 0;
-    std::map<int, bool> assembly_flag = ninja_navigator_->getAssemblyFlags();
-
-    for(const auto & item : est_wrench_list_){
-      if(assembly_flag[item.first]){
-        W_sum += item.second;
-        module_num ++;
+    // ===== 0) Basic Data =====
+    const auto assembly_flag = ninja_navigator_->getAssemblyFlags();
+    std::vector<int> ids     = ninja_navigator_->getAssemblyIds();  // C1..CN
+    const int N = static_cast<int>(ids.size());
+    const int my_id = ninja_navigator_->getMyID();
+    if (N == 0) return;
+    
+    const bool is_closed = ninja_navigator_->pseudo_assembly_mode_;
+    const int  leader_id = ninja_navigator_->getLeaderID();
+    const auto xsmap     = ninja_navigator_->getContactXstarsSnapshot(); 
+    // xs.Phi_Ci_Di   = ^Ci X*_{Di}
+    // xs.Psi_Ci_Dip1 = ^Ci X*_{D_{i+1}}
+    // xs.Ci_from_Base= ^Ci X*_{Base} (Base=com)
+    
+    // ===== 1) Estimation for disturbance wrench =====
+    Eigen::Matrix<double,6,1> Wdist_base = Eigen::Matrix<double,6,1>::Zero();
+    int cnt = 0;
+    for (const auto& kv : est_wrench_list_) {
+      const int id = kv.first;
+      if (!assembly_flag.count(id) || !assembly_flag.at(id)) continue;
+      Wdist_base += kv.second;  // ^Base
+      ++cnt;
+    }
+    if (cnt > 0) Wdist_base /= static_cast<double>(cnt);
+    
+    // publish: whole external wrench
+    {
+      geometry_msgs::WrenchStamped ws;
+      ws.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
+      ws.header.frame_id = ninja_navigator_->getMyName() + "/center_of_moving";
+      ws.wrench.force.x  = Wdist_base(0);
+      ws.wrench.force.y  = Wdist_base(1);
+      ws.wrench.force.z  = Wdist_base(2);
+      ws.wrench.torque.x = Wdist_base(3);
+      ws.wrench.torque.y = Wdist_base(4);
+      ws.wrench.torque.z = Wdist_base(5);
+      whole_external_wrench_pub_.publish(ws);
+    }
+    
+    // ===== 2) Build Estimateion System (Aw=d) =====
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(6*N, 6*N);
+    Eigen::VectorXd d = Eigen::VectorXd::Zero(6*N);
+    
+    for (int i = 0; i < N; ++i) {
+      const int id_i = ids[i];
+      const auto& xs = xsmap.at(id_i);
+      
+      // d_i = ^Ci Wext_i - (^Ci X*_{Base}) ^Base Wdist
+      Eigen::Matrix<double,6,1> Wext_Ci = Eigen::Matrix<double,6,1>::Zero();
+      if (est_wrench_list_.count(id_i)) {
+        Wext_Ci = xs.Ci_from_Base * est_wrench_list_.at(id_i);
+      }
+      const Eigen::Matrix<double,6,1> Wdist_Ci = xs.Ci_from_Base * Wdist_base;
+      d.segment<6>(6*i) = Wext_Ci - Wdist_Ci;
+      
+      // A
+      A.block<6,6>(6*i, 6*i) = xs.Phi_Ci_Di;
+      if (i >= 1) {
+        A.block<6,6>(6*i, 6*(i-1)) -= xs.Xi_Ci_Dim1;
+      } else if (is_closed) {
+        A.block<6,6>(6*i, 6*(N-1)) -= xs.Xi_Ci_Dim1;
       }
     }
+    
+    // solve (KKT or smoothing)
+    Eigen::VectorXd w_ctc = Eigen::VectorXd::Zero(6*N);
+    if (!is_closed) {
+      Eigen::MatrixXd E = Eigen::MatrixXd::Zero(6, 6*N);
+      E.block<6,6>(0, 6*(N-1)) = Eigen::Matrix<double,6,6>::Identity();
+      const int n = 6*N, p = 6;
+      Eigen::MatrixXd KKT = Eigen::MatrixXd::Zero(n+p, n+p);
+      KKT.block(0,0,n,n) = A.transpose()*A;
+      KKT.block(0,n,n,p) = E.transpose();
+      KKT.block(n,0,p,n) = E;
+      Eigen::VectorXd rhs = Eigen::VectorXd::Zero(n+p);
+      rhs.segment(0,n) = A.transpose() * d;
+      Eigen::VectorXd sol = KKT.fullPivLu().solve(rhs);
+      w_ctc = sol.segment(0,n);
+    } else {
+      const int n = 6*N;
+      if (!prev_ctc_valid_ || prev_ctc_wrench_.size() != n) {
+        prev_ctc_wrench_ = Eigen::VectorXd::Zero(n);
+        prev_ctc_valid_  = true;
+      }
+      Eigen::MatrixXd LHS = A.transpose()*A + rho_ctc_ * Eigen::MatrixXd::Identity(n,n);
+      Eigen::VectorXd RHS = A.transpose()*d + rho_ctc_ * prev_ctc_wrench_;
+      w_ctc = LHS.ldlt().solve(RHS);
+      prev_ctc_wrench_ = w_ctc;
+    }
+    
+    for (int i = 0; i < N; ++i) {
+      const int id = ids[i];
+      // make it ACTION-side: wrench that module i EXERTS ON (i+1) at frame Di
+      inter_wrench_list_[id] = - w_ctc.segment<6>(6*i); // ^Di, now i→i+1
+    }
+    
+    // publish my module
+    {
+      const Eigen::Matrix<double,6,1>& Wctc_Di = inter_wrench_list_[my_id];
+      geometry_msgs::WrenchStamped m;
+      m.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
+      m.header.frame_id = ninja_navigator_->getMyName() + std::to_string(my_id) + "/yaw_connect_point";
+      m.wrench.force.x = Wctc_Di(0);
+      m.wrench.force.y = Wctc_Di(1);
+      m.wrench.force.z = Wctc_Di(2);
+      m.wrench.torque.x = Wctc_Di(3);
+      m.wrench.torque.y = Wctc_Di(4);
+      m.wrench.torque.z = Wctc_Di(5);
+      internal_wrench_pub_.publish(m);
+    }
+    
+    // ===== 3) Build Compensation System(Hw=Δ) =====
+    Eigen::MatrixXd H = Eigen::MatrixXd::Zero(6*N, 6*N);
+    Eigen::VectorXd Delta = Eigen::VectorXd::Zero(6*N);
+    
+    for (int i = 0; i < N; ++i) {
+      const int id_i = ids[i];
+      const auto& xs = xsmap.at(id_i);
+      
+      // Δ_i = des_Di - cur_Di
+      Eigen::Matrix<double,6,1> des_Di = Eigen::Matrix<double,6,1>::Zero();
+      if (ff_inter_wrench_list_.count(id_i)) {
+        des_Di = ff_inter_wrench_list_.at(id_i); // already ^Di
+      }
+      const Eigen::Matrix<double,6,1> cur_Di = inter_wrench_list_[id_i]; // ^Di
+      // Delta.segment<6>(6*i) = des_Di - cur_Di;
 
-    if(!module_num) return;
-    W_w = W_sum / module_num;
+      // Δ_i (in ^Ci) = Φ_i * (des_Di - cur_Di)
+      const Eigen::Matrix<double,6,1> delta_Di = des_Di - cur_Di;      // ^Di
+      const Eigen::Matrix<double,6,1> delta_Ci = xs.Phi_Ci_Di * delta_Di; // ^Ci
+      Delta.segment<6>(6*i) = delta_Ci;
 
-    int my_id = ninja_navigator_->getMyID();
-    std::string my_name = ninja_navigator_->getMyName() + std::to_string(my_id);
-
-    geometry_msgs::WrenchStamped wrench_msg;
-    wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
-    wrench_msg.header.frame_id =my_name + "/cog";
-    wrench_msg.wrench.force.x = W_w(0);
-    wrench_msg.wrench.force.y = W_w(1);
-    wrench_msg.wrench.force.z = W_w(2);
-    wrench_msg.wrench.torque.x = W_w(3);
-    wrench_msg.wrench.torque.y = W_w(4);
-    wrench_msg.wrench.torque.z = W_w(5);
-    whole_external_wrench_pub_.publish(wrench_msg);
-
-    /* 2. calculate interactional wrench for each module*/
-    Eigen::VectorXd left_inter_wrench = Eigen::VectorXd::Zero(6); //'left_inter_wrench' represents the wrench applied from right-side module to left-side module
-    for(const auto & item : est_wrench_list_){
-      if(assembly_flag[item.first]){
-        Eigen::VectorXd right_inter_wrench = item.second - W_w + left_inter_wrench;
-        inter_wrench_list_[item.first] = right_inter_wrench;
-        left_inter_wrench = right_inter_wrench;
-      }else{
-        inter_wrench_list_[item.first] = Eigen::VectorXd::Zero(6);
+      // H: +Φ_i w_i − Ψ_i w_{i+1}
+      H.block<6,6>(6*i, 6*i) = xs.Phi_Ci_Di;
+      if (i < N-1) {
+        H.block<6,6>(6*i, 6*(i+1)) -= xs.Psi_Ci_Dip1;
+      } else if (is_closed) {
+        H.block<6,6>(6*i, 0) -= xs.Psi_Ci_Dip1; // wrap
       }
     }
-    wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
-    wrench_msg.header.frame_id =my_name + "/cog";
-    wrench_msg.wrench.force.x = inter_wrench_list_[my_id](0);
-    wrench_msg.wrench.force.y = inter_wrench_list_[my_id](1);
-    wrench_msg.wrench.force.z = inter_wrench_list_[my_id](2);
-    wrench_msg.wrench.torque.x = inter_wrench_list_[my_id](3);
-    wrench_msg.wrench.torque.y = inter_wrench_list_[my_id](4);
-    wrench_msg.wrench.torque.z = inter_wrench_list_[my_id](5);
-    internal_wrench_pub_.publish(wrench_msg);
-    /* 3. calculate wrench compensation term for each module*/
-    int leader_id = ninja_navigator_->getLeaderID();
-    /* 3.1. process of leader*/
-    // wrench_comp_list_[leader_id] = -est_wrench_list_[leader_id] - W_w;
-    /* 3.2. process from leader to left*/
-    int right_module_id = leader_id;
-    Eigen::VectorXd wrench_comp_sum_left = Eigen::VectorXd::Zero(6);
-    for(int i = leader_id-1; i > 0; i--){
-      if(assembly_flag[i]){
-        wrench_comp_sum_left += ff_inter_wrench_list_[i] + inter_wrench_list_[i];
-        // wrench_comp_list_[i] += wrench_comp_gain_ *  wrench_comp_sum_left;
-        wrench_comp_list_[i] = wrench_comp_sum_left;
-        right_module_id = i;
-      }else{
-        wrench_comp_list_[i] = Eigen::VectorXd::Zero(6);
+    
+    // Constraint: Ew=0 (Open and Close)
+    Eigen::MatrixXd E = Eigen::MatrixXd::Zero(6, 6*N);
+    const int leader_idx = static_cast<int>(
+                                            std::distance(ids.begin(), std::find(ids.begin(), ids.end(), leader_id)));
+    E.block<6,6>(0, 6*leader_idx) = Eigen::Matrix<double,6,6>::Identity();
+    
+    // KKT solve
+    {
+      const int n = 6*N, p = 6;
+      Eigen::MatrixXd KKT = Eigen::MatrixXd::Zero(n+p, n+p);
+      KKT.block(0,0,n,n) = H.transpose()*H;
+      KKT.block(0,n,n,p) = E.transpose();
+      KKT.block(n,0,p,n) = E;
+      Eigen::VectorXd rhs = Eigen::VectorXd::Zero(n+p);
+      rhs.segment(0,n) = H.transpose() * Delta;
+      
+      Eigen::VectorXd sol = KKT.fullPivLu().solve(rhs);
+      Eigen::VectorXd wff = sol.segment(0,n); // ^Di
+      
+      for (int i = 0; i < N; ++i) {
+        const int id = ids[i];
+        const auto& xs = xsmap.at(id);
+        const Eigen::Matrix<double,6,1> wff_Di = wff.segment<6>(6*i);
+        const Eigen::Matrix<double,6,1> wff_Ci = xs.Phi_Ci_Di * wff_Di; // ^Ci
+        wrench_comp_list_[id] = wff_Ci;
       }
     }
-    /* 3.3. process from leader to right*/
-    int max_modules_num = ninja_navigator_->getMaxModuleNum();
-    int left_module_id = leader_id;
-    Eigen::VectorXd wrench_comp_sum_right = Eigen::VectorXd::Zero(6);
-    for(int i = leader_id+1; i <= max_modules_num; i++){
-      if(assembly_flag[i]){
-        wrench_comp_sum_right +=- ff_inter_wrench_list_[left_module_id] - inter_wrench_list_[left_module_id];
-        // wrench_comp_list_[i] += wrench_comp_gain_ * wrench_comp_sum_right;
-        wrench_comp_list_[i] = wrench_comp_sum_right;
-        left_module_id = i;
-      }else{
-        wrench_comp_list_[i] = Eigen::VectorXd::Zero(6);
-      }
-    }
-    /* 4. convert compensation wrench from CoM to CoG coordinates */
-    if(ninja_navigator_->getCurrentAssembled())
-      {
-        Eigen::VectorXd wrench_comp_com = wrench_comp_list_[ninja_navigator_->getMyID()];
-        Eigen::VectorXd wrench_comp_cog = wrench_comp_com;
-        Eigen::Matrix3d com2cog = (ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>() * ninja_navigator_->getCom2Base<Eigen::Affine3d>().inverse()).rotation();
-        wrench_comp_cog.head(3) = com2cog * wrench_comp_com.head(3);
-        wrench_comp_list_[ninja_navigator_->getMyID()] = wrench_comp_cog;
-      }
-  }
+  }  
 
   void NinjaController::pseudoAsmCallback(const std_msgs::BoolConstPtr & msg)
   {
@@ -372,7 +451,9 @@ namespace aerial_robot_control
     ros::NodeHandle joint_nh(control_nh, "joint_comp");
     getParam<double>(joint_nh, "p_gain", joint_p_gain_, 0.1);
     getParam<double>(joint_nh, "i_gain", joint_i_gain_, 0.005);
-    getParam<double>(joint_nh, "d_gain", joint_d_gain_, 0.07);  
+    getParam<double>(joint_nh, "d_gain", joint_d_gain_, 0.07);
+
+    getParam<double>(control_nh, "smooth_rho", rho_ctc_, 1e-2); // 例: 0.01
   }
 
   void NinjaController::reset()

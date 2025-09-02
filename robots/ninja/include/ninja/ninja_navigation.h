@@ -69,9 +69,9 @@ namespace aerial_robot_navigation
     KDL::JntArray start_joint_pos_;
 
     // Wrench transform matrices: maps wrench expressed in COG to each target frame
-    Eigen::Matrix<double, 6, 6> cog2yaw_connect_;
-    Eigen::Matrix<double, 6, 6> cog2pitch_connect_;
-    Eigen::Matrix<double, 6, 6> cog2com_;
+    Eigen::Matrix<double, 6, 6> cog2yaw_connect_; //^{yaw}T_{CoG}
+    Eigen::Matrix<double, 6, 6> cog2pitch_connect_; //^{pitch}T_{CoG}
+    Eigen::Matrix<double, 6, 6> cog2com_; //^{com}T_{CoG}
   };
   class NinjaNavigator : public BeetleNavigator
   {
@@ -235,6 +235,14 @@ namespace aerial_robot_navigation
     inline tf::Vector3 getTargetOmegaCand() {return target_omega_candidate_;}
     inline tf::Vector3 getErrVelCand() {return err_vel_candidate_;}
     inline tf::Vector3 getErrOmegaCand() {return err_omega_candidate_;}
+
+    struct ContactXstars {
+      Eigen::Matrix<double,6,6> Phi_Ci_Di;    // ^Ci X*_{Di}
+      Eigen::Matrix<double,6,6> Xi_Ci_Dim1;   // ^Ci X*_{D_{i-1}}
+      Eigen::Matrix<double,6,6> Psi_Ci_Dip1;  // ^Ci X*_{D_{i+1}}
+      Eigen::Matrix<double,6,6> Ci_from_Base; // ^Ci X*_{Base} (= data.cog2com_.inverse()）
+    };
+    std::map<int, ContactXstars> getContactXstarsSnapshot() const;
 
   protected:
     std::mutex mutex_com2base_;

@@ -238,7 +238,7 @@ void NinjaNavigator::calcCenterOfMoving()
     }
   else
     {    
-      int leader_index =  std::round((assembled_modules_ids_.size())/2.0) -1;
+      int leader_index =  std::round((assembled_modules_ids_.size())/2.0)-1;
       if(!leader_fix_flag_) leader_id_ = assembled_modules_ids_[leader_index];
     }
   if(my_id_ == leader_id_ && control_flag_){
@@ -522,7 +522,7 @@ KDL::Frame NinjaNavigator::calcCom2BaseTransform(int module_id)
         continue;
       }
     }
-    ldfc_2_myfc = ldfc_2_myfc.Inverse();  
+    ldfc_2_myfc = ldfc_2_myfc.Inverse();
   }
 
   KDL::Frame raw_cog2fc;
@@ -592,9 +592,9 @@ void NinjaNavigator::calcModulesFkTransform()
 
     // Build target-frame transforms ^targetT_cog for wrench passive transform:
     // ^targetT_cog = (^targetT_base) * (^baseT_cog) = ( ^baseT_target )^{-1} * (^baseT_cog)
-    const Eigen::Affine3d cog2yaw_in_yaw     = base2yaw.inverse()   * T_cog2base;  // ^yawT_cog
-    const Eigen::Affine3d cog2pitch_in_pitch = base2pitch.inverse() * T_cog2base;  // ^pitchT_cog
-    const Eigen::Affine3d cog2com_in_com     = base2com.inverse()   * T_cog2base;  // ^comT_cog
+    const Eigen::Affine3d cog2yaw_in_yaw     = base2yaw   * T_cog2base;  // ^yawT_cog
+    const Eigen::Affine3d cog2pitch_in_pitch = base2pitch * T_cog2base;  // ^pitchT_cog
+    const Eigen::Affine3d cog2com_in_com     = base2com   * T_cog2base;  // ^comT_cog
 
     // Store wrench transforms (COG -> target)
     data.cog2yaw_connect_   = makeWrenchXstar(cog2yaw_in_yaw);
@@ -1633,6 +1633,71 @@ void NinjaNavigator::calcComStateProcess()
       ROS_ERROR_STREAM("CoM is not defined (comMovingProcess)");
       return;
     }
+}
+
+std::map<int, NinjaNavigator::ContactXstars> NinjaNavigator::getContactXstarsSnapshot() const
+{
+  std::map<int, ContactXstars> out;
+  if (assembled_modules_ids_.empty()) return out;
+  
+  auto wrenchFromTf = [&](const std::string& from, const std::string& to) {
+                        geometry_msgs::TransformStamped tfst;
+                        tfst = tfBuffer_.lookupTransform(from, to, ros::Time(0)); // ^from T_to
+                        KDL::Frame k; tf::transformMsgToKDL(tfst.transform, k);
+                        Eigen::Affine3d T = aerial_robot_model::kdlToEigen(k);
+                        return makeWrenchXstar(T); // ^from X*_{to}
+                      };
+  
+  std::vector<int> ids = assembled_modules_ids_;
+  const bool is_closed = pseudo_assembly_mode_;
+  
+  for (size_t idx = 0; idx < ids.size(); ++idx) {
+    const int i_id   = ids[idx];
+    const int im1_id = (idx == 0 ? (is_closed ? ids.back() : -1) : ids[idx-1]);
+    const int ip1_id = (idx+1 == ids.size() ? (is_closed ? ids.front() : -1) : ids[idx+1]);
+    
+    const auto& data_i = assembled_modules_data_.at(i_id);
+    
+    ContactXstars xs;
+    
+    // ^Ci X*_{Base}  = (^{com}X*_{cog})^{-1}
+    xs.Ci_from_Base = data_i.cog2com_.inverse();
+    
+    // Φ_i = ^Ci X*_{Di} = (^{Di}X*_{Ci})^{-1} = (^{yaw_i}X*_{cog_i})^{-1}
+    xs.Phi_Ci_Di = data_i.cog2yaw_connect_.inverse();
+    
+    // Xi:^Ci X*_{D_{i-1}} = ^Ci X*_{C_{i-1}}  ^C_{i-1}X*_{D_{i-1}}
+    if (im1_id > 0) {
+      const auto& data_im1 = assembled_modules_data_.at(im1_id);
+      const auto X_Ci_Cim1 = wrenchFromTf(
+                                          my_name_ + std::to_string(i_id)   + "/cog",
+                                          my_name_ + std::to_string(im1_id) + "/cog");
+      // ^C_{i-1} X*_{D_{i-1}} = (^{yaw_{i-1}}X*_{cog_{i-1}})^{-1}
+      const auto X_Cim1_Dim1 = data_im1.cog2yaw_connect_.inverse();
+      xs.Xi_Ci_Dim1 = X_Ci_Cim1 * X_Cim1_Dim1;
+    } else {
+      xs.Xi_Ci_Dim1 = Eigen::Matrix<double,6,6>::Zero();
+    }
+    
+    //^Ci X*_{D_{i+1}} = ^Ci X*_{C_{i+1}} · ^C_{i+1}X*_{D_{i+1}}
+    if (ip1_id > 0) {
+      const auto& data_ip1 = assembled_modules_data_.at(ip1_id);
+      // ^Ci X*_{C_{i+1}}
+      const auto X_Ci_Cip1 = wrenchFromTf(
+                                          my_name_ + std::to_string(i_id)   + "/cog",
+                                          my_name_ + std::to_string(ip1_id) + "/cog");
+
+      // ^C_{i+1} X*_{D_{i+1}} = (^{yaw_{i+1}}X*_{cog_{i+1}})^{-1}
+      const auto X_Cip1_Dip1 = data_ip1.cog2yaw_connect_.inverse();
+      
+      xs.Psi_Ci_Dip1 = X_Ci_Cip1 * X_Cip1_Dip1;
+    } else {
+      xs.Psi_Ci_Dip1 = Eigen::Matrix<double,6,6>::Zero();
+    }
+    
+    out.emplace(i_id, xs);
+  }
+  return out;
 }
 
 void NinjaNavigator::rosParamInit()

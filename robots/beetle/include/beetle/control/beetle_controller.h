@@ -85,5 +85,7 @@ namespace aerial_robot_control
     void rosParamInit() override;
     void externalWrenchEstimate() override;
     void reset() override;
+
+    void cfgPidCallback(aerial_robot_control::PIDConfig &config, uint32_t level, std::vector<int> controller_indices) override;
   };
 };

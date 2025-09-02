@@ -489,6 +489,50 @@ namespace aerial_robot_control
     ff_inter_wrench_list_[id] = wrench;
   }
 
+  void BeetleController::cfgPidCallback(aerial_robot_control::PIDConfig &config, uint32_t level, std::vector<int> controller_indices)
+  {
+    using Levels = aerial_robot_msgs::DynamicReconfigureLevels;
+    if(config.pid_control_flag)
+      {
+        switch(level)
+          {
+          case Levels::RECONFIGURE_P_GAIN:
+            for(const auto& index: controller_indices)
+              {
+                if(index > 6)
+                  {
+                    ROS_INFO_STREAM("change p gain for wrench controller '" << pid_controllers_.at(index).getName() << "'");
+                    wrench_comp_p_gain_ = config.p_gain;
+                  }
+              }
+            break;
+          case Levels::RECONFIGURE_I_GAIN:
+            for(const auto& index: controller_indices)
+              {
+                if(index > 6)
+                  {
+                    ROS_INFO_STREAM("change i gain for wrench controller '" << pid_controllers_.at(index).getName() << "'");
+                    wrench_comp_i_gain_ = config.i_gain;
+                  }
+              }
+            break;
+          case Levels::RECONFIGURE_D_GAIN:
+            for(const auto& index: controller_indices)
+              {
+                if(index > 6)
+                  {
+                    ROS_INFO_STREAM("change d gain for wrench controller '" << pid_controllers_.at(index).getName() << "'");
+                    wrench_comp_d_gain_ = config.d_gain;
+                  }
+              }
+            break;
+          default :
+            break;
+          }
+      }
+    PoseLinearController::cfgPidCallback(config, level, controller_indices);
+  }
+
 } //namespace aerial_robot_controller
 
 /* plugin registration */

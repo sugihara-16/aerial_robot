@@ -32,6 +32,7 @@ namespace aerial_robot_control
                     ) override;
   private:
     void pseudoAsmCallback(const std_msgs::BoolConstPtr & msg);
+    void closedLoopCallback(const std_msgs::BoolConstPtr & msg);
     boost::shared_ptr<aerial_robot_navigation::NinjaNavigator> ninja_navigator_;
     boost::shared_ptr<NinjaRobotModel> ninja_robot_model_;
 
@@ -44,6 +45,7 @@ namespace aerial_robot_control
     KDL::Tree module_tree_for_control_;
 
     ros::Subscriber pseudo_assembly_flag_sub_;
+    ros::Subscriber closed_loop_flag_sub_;
     ros::Publisher com_motion_pid_pub_;
 
     aerial_robot_msgs::PoseControlPid com_motion_pid_msg_;
@@ -53,6 +55,8 @@ namespace aerial_robot_control
     double rho_ctc_;
     Eigen::VectorXd prev_ctc_wrench_;
     bool prev_ctc_valid_ = false;
+
+    bool closed_loop_flag_ = false;
 
   protected:
     void calcInteractionWrench() override;

@@ -244,6 +244,8 @@ namespace aerial_robot_navigation
     };
     std::map<int, ContactXstars> getContactXstarsSnapshot() const;
 
+    bool closed_loop_flag_ = false;
+
   protected:
     std::mutex mutex_com2base_;
     

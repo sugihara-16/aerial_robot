@@ -23,6 +23,7 @@ namespace aerial_robot_control
     // ninja_robot_model_->copyTreeStructure(ninja_robot_model_->getInitModuleTree(), module_tree_for_control_);
 
     pseudo_assembly_flag_sub_ = nh_.subscribe("/pseudo_assembly_flag",1,&NinjaController::pseudoAsmCallback, this);
+    closed_loop_flag_sub_ = nh_.subscribe("/closed_loop_flag",1,&NinjaController::closedLoopCallback, this);
     com_motion_pid_pub_ = nh_.advertise<aerial_robot_msgs::PoseControlPid>("debug/com_motion/pid", 1);
 
     com_motion_pid_msg_.x.total.resize(1);
@@ -266,9 +267,9 @@ namespace aerial_robot_control
     std::vector<int> ids     = ninja_navigator_->getAssemblyIds();  // C1..CN
     const int N = static_cast<int>(ids.size());
     const int my_id = ninja_navigator_->getMyID();
+    const bool is_closed = ninja_navigator_->closed_loop_flag_;
     if (N == 0) return;
     
-    const bool is_closed = ninja_navigator_->pseudo_assembly_mode_;
     const int  leader_id = ninja_navigator_->getLeaderID();
     const auto xsmap     = ninja_navigator_->getContactXstarsSnapshot(); 
     // xs.Phi_Ci_Di   = ^Ci X*_{Di}
@@ -442,6 +443,15 @@ namespace aerial_robot_control
     else
       ROS_WARN_STREAM("Pseudo assembly mode OFF!");
   }
+
+  void NinjaController::closedLoopCallback(const std_msgs::BoolConstPtr & msg)
+  {
+    ninja_navigator_->closed_loop_flag_ = msg->data;
+    if(msg->data)
+      ROS_WARN_STREAM("Closed loop mode ON");
+    else
+      ROS_WARN_STREAM("Closed loop mode OFF!");
+  }
   
 
   void NinjaController::rosParamInit()
@@ -453,7 +463,7 @@ namespace aerial_robot_control
     getParam<double>(joint_nh, "i_gain", joint_i_gain_, 0.005);
     getParam<double>(joint_nh, "d_gain", joint_d_gain_, 0.07);
 
-    getParam<double>(control_nh, "smooth_rho", rho_ctc_, 1e-2); // 例: 0.01
+    getParam<double>(control_nh, "smooth_rho", rho_ctc_, 0.1);
   }
 
   void NinjaController::reset()

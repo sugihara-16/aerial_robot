@@ -8,8 +8,8 @@ controller:
 
   i_term_rp_calc_in_pc: false
   wrench_estimate_update_rate: 100 
-  momentum_observer_force_weight: 3
-  momentum_observer_torque_weight: 2.5
+  momentum_observer_force_weight: 5.0
+  momentum_observer_torque_weight: 5.0
   wrench_estimate_flag: true
   comp_term_update_freq: 40
 
@@ -22,10 +22,16 @@ controller:
   cutoff_freq: 1.0
   sample_freq: 40.0
 
+  smooth_rho: 1.0
+
   wrench_comp:
-    p_gain: 0.1
-    d_gain: 0.07
-    i_gain: 0.01
+    # p_gain: 0.1
+    # d_gain: 0.07
+    # i_gain: 0.01
+
+    p_gain: 0.08
+    d_gain: 0.06
+    i_gain: 0.0
   joint_pid:
     p_gain: 0.2
     d_gain: 0.1
@@ -36,7 +42,7 @@ controller:
     d_gain: 3.5
     limit_sum: 4.0
     limit_p: 12.0
-    limit_i: 5.0
+    limit_i: 20.0
     limit_d: 12.0
 
   z:
@@ -56,7 +62,7 @@ controller:
     d_gain: 10.0 #4~11
     limit_sum: 20.0
     limit_p: 20.0
-    limit_i: 10.0
+    limit_i: 20.0
     limit_d: 20.0
 
     start_rp_integration_height: 0.01
@@ -67,7 +73,7 @@ controller:
     d_gain: 4 #4~11
     limit_sum: 20.0
     limit_p: 20.0
-    limit_i: 10.0
+    limit_i: 20.0
     limit_d: 20.0
 
     start_rp_integration_height: 0.01
@@ -79,7 +85,7 @@ controller:
     limit_err_p: 0.4
     limit_sum: 20.0
     limit_p: 20.0
-    limit_i: 5.0
+    limit_i: 20.0
     limit_d: 20.0
 
     need_d_control: true

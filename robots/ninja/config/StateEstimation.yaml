@@ -55,3 +55,12 @@ sensor_plugin:
                 # param_verbose: true
                 throttle_rate: 120 # Hz
 
+                init_pose:
+                  enable: true
+                  x: 0.0
+                  y: 0.0
+                  z: 0.18
+                  roll:  0.0
+                  pitch: 0.0
+                  yaw:   0.0   # = 90deg
+

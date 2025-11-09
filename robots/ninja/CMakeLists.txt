@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   beetle
+  mujoco_ros_control
   )
 
 find_package(Eigen3 REQUIRED)
@@ -73,3 +74,7 @@ install(DIRECTORY script
 catkin_install_python(PROGRAMS script/roslaunch
   DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
   )
+
+mujoco_model_convert(
+  ${PROJECT_SOURCE_DIR}
+  ${PROJECT_SOURCE_DIR}/config/mujoco_model.yaml)

@@ -18,38 +18,18 @@ servo_controller:
       name: yaw_dock_joint
       angle_sgn: -1
       simulation:
-        pid: {p: 50.0, i: 0.1, d: 2.0}
-        init_value: 0
+        pid: {p: 50.0, i: 1.0, d: 2.0}
+        init_value: 0.0
         type: effort_controllers/JointPositionController
-
-    # controller1_2:
-    #   id: 0
-    #   name: yaw_dock_joint
-    #   angle_sgn: -1
-    #   sub_controller: true
-    #   simulation:
-    #     pid: {p: 50.0, i: 0.1, d: 2.0}
-    #     init_value: 0
-    #     type: effort_controllers/JointEffortController
 
     controller2:
       id: 6
       name: pitch_dock_joint
       angle_sgn: 1
       simulation:
-        pid: {p: 50.0, i: 3.0, d: 0.0}
-        init_value: 0
+        pid: {p: 50.0, i: 1.0, d: 2.0}
+        init_value: 0.0
         type: effort_controllers/JointPositionController
-
-    # controller2_2:
-    #   id: 0
-    #   name: pitch_dock_joint
-    #   angle_sgn: -1
-    #   sub_controller: true
-    #   simulation:
-    #     pid: {p: 50.0, i: 0.1, d: 2.0}
-    #     init_value: 0
-    #     type: effort_controllers/JointEffortController
 
   gimbals:
     no_real_state: false
@@ -57,8 +37,8 @@ servo_controller:
     zero_point_offset: 2047
 
     simulation:
-      pid: {p: 5.0, i: 0.1, d: 0.1, i_clamp_max: 2.0, i_clamp_min: -2.0}
-      init_value: 0
+      pid: {p: 50.0, i: 0.01, d: 0.0}
+      init_value: 0.0
       type: effort_controllers/JointPositionController
 
     controller1:

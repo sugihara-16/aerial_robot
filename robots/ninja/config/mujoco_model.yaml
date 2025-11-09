@@ -1,0 +1,7 @@
+package:
+  ["ninja"]
+
+ninja:
+  input: ["robots/ninja.urdf.xacro"]
+  filename: ["single_module"]
+  meshdir: urdf/mesh

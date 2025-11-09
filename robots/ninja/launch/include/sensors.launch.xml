@@ -20,13 +20,13 @@
       <include file="$(find aerial_robot_base)/launch/external_module/mocap.launch">
       	<arg name="robot_id" value="$(arg robot_id)"/>
       </include>
-    </group>
+      <!-- livox mid360 & fast lio -->
+      <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" />
+      <include file="$(find fast_lio)/launch/mapping_mid360.launch" >
+        <arg name="rviz" value="false" />
+      </include>
 
-    <!-- livox mid360 & fast lio -->
-    <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" />
-    <include file="$(find fast_lio)/launch/mapping_mid360.launch" >
-      <arg name="rviz" value="false" />
-    </include>
+    </group>
 
     <!-- basic configuration for sensors (e.g. noise sigma) -->
     <rosparam file="$(find gimbalrotor)/config/sensors/imu/spinal.yaml" command="load" />

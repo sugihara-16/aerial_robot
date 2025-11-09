@@ -11,11 +11,11 @@ import time
 class GimbalTest():
     def __init__(self):
         
-        self.gimbal_pub = rospy.Publisher('/ninja/gimbals_ctrl', JointState, queue_size=1)
+        self.gimbal_pub = rospy.Publisher('/ninja/joints_ctrl', JointState, queue_size=1)
         self.nav_rate = rospy.Rate(200)
 
         self.joint_state_cmd_msg = JointState()
-        self.joint_state_cmd_msg.name = ['gimbal2_roll', 'gimbal2_pitch']
+        self.joint_state_cmd_msg.name = ['yaw_dock_joint']
 
         self.t = 0
         self.test_angle_max = 1.5
@@ -28,25 +28,15 @@ class GimbalTest():
             self.t = self.t + 0.02
             target_angle = self.test_angle_max * math.sin(self.t)
             if self.t < math.pi * 2:
-                self.joint_state_cmd_msg.position = [target_angle,0]
-            elif self.t > math.pi * 2 and self.t < math.pi * 4:
-                if not flag:
-                    self.joint_state_cmd_msg.position = [0, 0]
-                    time.sleep(3.0)
-                    flag = True
-                else:
-                    self.joint_state_cmd_msg.position = [0, target_angle]
+                self.joint_state_cmd_msg.position = [target_angle]
             else:
-                self.joint_state_cmd_msg.position = [0, 0]
+                self.joint_state_cmd_msg.position = [0]
             self.gimbal_pub.publish(self.joint_state_cmd_msg)
             self.nav_rate.sleep()
 
 if __name__ == "__main__":
 
-  rospy.init_node("gimbale_test")
+  rospy.init_node("joint_test")
 
   gimbal_test = GimbalTest()
   gimbal_test.main()
-
-
-

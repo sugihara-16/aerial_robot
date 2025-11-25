@@ -23,7 +23,7 @@ include_directories(
 )
 
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 catkin_package(
   INCLUDE_DIRS include

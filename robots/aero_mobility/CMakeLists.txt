@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 catkin_package(
   CATKIN_DEPENDS roscpp aerial_robot_control aerial_robot_model aerial_robot_msgs spinal

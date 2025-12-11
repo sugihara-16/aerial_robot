@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function # for print function in pytho2
 import rospy
-
 from std_msgs.msg import Empty
 from std_msgs.msg import Int8
 from std_msgs.msg import UInt16
@@ -23,7 +22,6 @@ f:  force landing
 h:  halt (force stop motor)
 x:  motion start
 y:  motion interrupt
-z:  motion force transition
 
      q           w           e           [
 (turn left)  (forward)  (turn right)  (move up)
@@ -186,5 +184,3 @@ if __name__=="__main__":
                 print(repr(e))
         finally:
                 termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-
-

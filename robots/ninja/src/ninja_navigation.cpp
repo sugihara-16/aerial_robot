@@ -933,7 +933,7 @@ void NinjaNavigator::jointsCtrlCallback(const sensor_msgs::JointStateConstPtr& s
 
 void NinjaNavigator::naviCallback(const aerial_robot_msgs::FlightNavConstPtr & msg)
 {
-  if(getNaviState() == TAKEOFF_STATE || BaseNavigator::getNaviState() == LAND_STATE || getModuleState() != SEPARATED) return;
+  if(getModuleState() != SEPARATED) return;
 
   gps_waypoint_ = false;
 

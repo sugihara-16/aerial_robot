@@ -61,6 +61,8 @@ namespace aerial_robot_control
     bool underactuate_;
     double target_roll_ = 0.0, target_pitch_ = 0.0;
 
+    bool gravity_comp_;
+
     void sendCmd() override;
     void sendFourAxisCommand();
     void sendGimbalCommand();

@@ -193,7 +193,7 @@ void BaseNavigator::simpleMoveBaseGoalCallback(const geometry_msgs::PoseStampedC
 
 void BaseNavigator::naviCallback(const aerial_robot_msgs::FlightNavConstPtr & msg)
 {
-  if(getNaviState() != HOVER_STATE) return;
+  // if(getNaviState() != HOVER_STATE) return;
 
   gps_waypoint_ = false;
 

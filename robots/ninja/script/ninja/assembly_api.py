@@ -115,6 +115,7 @@ class StandbyState(smach.State):
         # publisher
         self.follower_nav_pub = rospy.Publisher(self.robot_name+"/uav/nav", FlightNav, queue_size=10)
         self.follower_traj_pub = rospy.Publisher(self.robot_name+"/target_pose", PoseStamped, queue_size=10)
+        self.pose_err_pub = rospy.Publisher(self.robot_name+ "/docking_pose_err" ,TwistStamped,queue_size = 10)
         # self.follower_att_pub = rospy.Publisher(self.robot_name+"/final_target_baselink_rot", DesireCoord, queue_size=10)
         if(self.attach_dir < 0):
             self.follower_docking_pub = rospy.Publisher(self.robot_name+"/docking_cmd", Bool, queue_size=10)
@@ -129,7 +130,8 @@ class StandbyState(smach.State):
 
         # messages
         self.docking_msg = Bool()
-
+        self.pose_err_msg = TwistStamped()
+        
         # utils
         self.coordTransformer = coordTransformer()
 
@@ -173,10 +175,19 @@ class StandbyState(smach.State):
         pos_error = np.array(self.target_offset[:3] - follower_from_leader[0])
         if(pos_error[0] * self.attach_dir > 0):
             pos_error[0] = 0.0
+        pos_error_debug = -1.0 * np.array(follower_from_leader[0])            
         att_error = np.array([0,0,0])-tf.transformations.euler_from_quaternion(follower_from_leader[1])
 
         rospy.loginfo(pos_error)
         rospy.loginfo(att_error)
+
+        self.pose_err_msg.twist.linear.x = pos_error_debug[0]
+        self.pose_err_msg.twist.linear.y = pos_error_debug[1]
+        self.pose_err_msg.twist.linear.z = pos_error_debug[2]
+        self.pose_err_msg.twist.angular.x = att_error[0]
+        self.pose_err_msg.twist.angular.y = att_error[1]
+        self.pose_err_msg.twist.angular.z = att_error[2]
+        self.pose_err_pub.publish(self.pose_err_msg)
 
         #check if pos and att error are within the torrelance
         if np.all(np.less(np.abs(pos_error),self.pos_error_tol)) and np.all(np.less(np.abs(att_error),self.att_error_tol)):
@@ -271,7 +282,7 @@ class ApproachState(smach.State):
                  real_machine = True,
                  leader = 'ninja2',
                  leader_id = 2,
-                 contact_vel_x = 0.1,
+                 contact_vel_x = 0.2,
                  contact_vel_y = 0,
                  contact_vel_z = 0,
                  x_offset = 0.0,
@@ -350,6 +361,7 @@ class ApproachState(smach.State):
         # publisher
         self.follower_nav_pub = rospy.Publisher(self.robot_name+"/uav/nav", FlightNav, queue_size=10)
         self.follower_traj_pub = rospy.Publisher(self.robot_name+"/target_pose", PoseStamped, queue_size=10)
+        self.pose_err_pub = rospy.Publisher(self.robot_name+ "/docking_pose_err" ,TwistStamped,queue_size = 10)
         # self.follower_att_pub = rospy.Publisher(self.robot_name+"/final_target_baselink_rot", DesireCoord, queue_size=10)
         self.leader_nav_pub = rospy.Publisher(self.leader+"/uav/nav", FlightNav, queue_size=10)
         self.assembly_nav_pub = rospy.Publisher("/assembly/uav/nav", FlightNav, queue_size=10)
@@ -367,6 +379,9 @@ class ApproachState(smach.State):
         self.emergency_stop_sub = rospy.Subscriber("/emergency_assembly_interuption",Empty,self.emergencyCb)
         self.force_switching_sub = rospy.Subscriber("/force_switching",Empty,self.forceSwitchCb)
         self.leader_target_pose_sub = rospy.Subscriber(self.leader + "/debug/pose/pid" ,PoseControlPid, self.leaderTargetPoseCb)
+
+        # messages
+        self.pose_err_msg = TwistStamped()
 
         # utils
         self.coordTransformer = coordTransformer()
@@ -427,7 +442,16 @@ class ApproachState(smach.State):
 
 
         pos_error = np.array(self.target_offset[:3] - follower_from_leader[0])
+        pos_error_debug = -1.0 * np.array(follower_from_leader[0])
         att_error = np.array([0,0,0])-tf.transformations.euler_from_quaternion(follower_from_leader[1])
+
+        self.pose_err_msg.twist.linear.x = pos_error_debug[0]
+        self.pose_err_msg.twist.linear.y = pos_error_debug[1]
+        self.pose_err_msg.twist.linear.z = pos_error_debug[2]
+        self.pose_err_msg.twist.angular.x = att_error[0]
+        self.pose_err_msg.twist.angular.y = att_error[1]
+        self.pose_err_msg.twist.angular.z = att_error[2]
+        self.pose_err_pub.publish(self.pose_err_msg)
 
         #check if pos and att error are within the torrelance
         if (np.all(np.less(np.abs(pos_error),self.pos_error_tol)) and np.all(np.less(np.abs(att_error),self.att_error_tol))) or self.force_switching_flag:

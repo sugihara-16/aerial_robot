@@ -18,7 +18,7 @@
 
       <!-- mocap -->
       <include file="$(find aerial_robot_base)/launch/external_module/mocap.launch">
-	<arg name="robot_id" value="$(arg robot_id)"/>
+      	<arg name="robot_id" value="$(arg robot_id)"/>
       </include>
     </group>
 
@@ -30,7 +30,7 @@
 
     <!-- basic configuration for sensors (e.g. noise sigma) -->
     <rosparam file="$(find gimbalrotor)/config/sensors/imu/spinal.yaml" command="load" />
-    <rosparam file="$(find aerial_robot_base)/config/sensors/mocap.yaml" command="load" />
+    <rosparam file="$(find ninja)/config/sensors/mocap.yaml" command="load" />
     <rosparam file="$(find aerial_robot_base)/config/sensors/lio/livox_mid360.yaml" command="load" />
   </group>
 

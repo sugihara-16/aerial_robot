@@ -117,6 +117,12 @@ namespace sensor_plugin
 
     tf2_ros::StaticTransformBroadcaster static_broadcaster_; // publish the transfrom between the work and vo frame
 
+    // --- initial pose injection ---
+    bool init_pose_enable_{false};
+    double init_x_{0.0}, init_y_{0.0}, init_z_{0.0};
+    double init_roll_{0.0}, init_pitch_{0.0}, init_yaw_{0.0};  // [rad]
+    bool init_pose_applied_{false};
+
     void rosParamInit();
     void servoControl(const ros::TimerEvent & e);
     void estimateProcess();

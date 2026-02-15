@@ -7,11 +7,12 @@
   <arg name="spawn_y_2" default="0.0"/>
   <arg name="spawn_yaw_2" default="0.0"/>
   <arg name="headless" default="true"/>
+  <arg name="simulation" default="true"/>
   <group>
     <include file="$(find ninja)/launch/bringup.launch">
       <arg name="robot_id" value="1"/>
       <arg name="real_machine" value="false"/>
-      <arg name="simulation" value="true"/>
+      <arg name="simulation" value="$(arg simulation)"/>
       <arg name="headless" value="$(arg headless)"/>
       <arg name="launch_gazebo" value="true"/>
       <arg name="estimate_mode" value="1"/>
@@ -23,8 +24,8 @@
     <include file="$(find ninja)/launch/bringup.launch">
       <arg name="robot_id" value="2"/>
       <arg name="real_machine" value="false"/>
-      <arg name="simulation" value="true"/>
-      <arg name="headless" value="$(arg headless)"/>
+      <arg name="simulation" value="$(arg simulation)"/>
+      <arg name="headless" value="true"/>
       <arg name="launch_gazebo" value="false"/>
       <arg name="estimate_mode" value="1"/>
       <arg name="spawn_x" default="$(arg spawn_x_2)"/>

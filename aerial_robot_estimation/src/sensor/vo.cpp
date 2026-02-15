@@ -264,6 +264,25 @@ namespace sensor_plugin
         /** step3: ^{w}H_{vo} = ^{w}H_{b} * ^{b}H_{vo} **/
         world_offset_tf_ = w_b_f * vo_b_f.inverse();
 
+        // ---- NEW: force initial full pose if enabled ----
+        if (init_pose_enable_ && !init_pose_applied_) {
+          // desired ^{w}H_{b}
+          tf::Transform H_wb_des; H_wb_des.setIdentity();
+          H_wb_des.setOrigin(tf::Vector3(init_x_, init_y_, init_z_));
+          tf::Quaternion q_des; q_des.setRPY(init_roll_, init_pitch_, init_yaw_);  // rad
+          H_wb_des.setRotation(q_des);
+
+          tf::Transform world_offset_from_desired =
+            H_wb_des * sensor_tf_ * raw_sensor_tf.inverse();
+          world_offset_tf_ = world_offset_from_desired;
+
+          ROS_INFO_STREAM("[vo] initial pose enforced. world_offset yaw(deg)="
+                          << (tf::getYaw(world_offset_tf_.getRotation()) * 180.0/M_PI));
+
+          bool init_pose_applied_{false};
+        }
+        // ---- NEW END ----        
+
         /* publish the offset tf if necessary */
         geometry_msgs::TransformStamped static_transformStamped;
         static_transformStamped.header.stamp = vo_msg->header.stamp;
@@ -650,8 +669,19 @@ namespace sensor_plugin
     getParam<double>("servo_control_rate", servo_control_rate_, 0.1);
 
     servo_angle_ = servo_init_angle_;
-  }
 
+    // ---- initial pose params ----
+    getParam<bool>("init_pose/enable", init_pose_enable_, false);
+    getParam<double>("init_pose/x", init_x_, 0.0);
+    getParam<double>("init_pose/y", init_y_, 0.0);
+    getParam<double>("init_pose/z", init_z_, 0.0);
+    getParam<double>("init_pose/roll",  init_roll_,  0.0);   // [rad]
+    getParam<double>("init_pose/pitch", init_pitch_, 0.0);   // [rad]
+    getParam<double>("init_pose/yaw",   init_yaw_,   0.0);   // [rad]
+    if (init_pose_enable_) {
+      ROS_INFO_STREAM("[vo] initial pose override enabled: "<< "xyz=(" << init_x_ << "," << init_y_ << "," << init_z_ << "), "<< "rpy(rad)=(" << init_roll_ << "," << init_pitch_ << "," << init_yaw_ << ")");
+    }
+  }
   void VisualOdometry::servoControl(const ros::TimerEvent & e)
   {
     assert(variable_sensor_tf_flag_);

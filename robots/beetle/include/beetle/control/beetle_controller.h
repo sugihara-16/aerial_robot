@@ -8,6 +8,8 @@
 #include <gimbalrotor/control/gimbalrotor_controller.h>
 #include <beetle/sensor/imu.h>
 
+#include <mutex>
+
 namespace aerial_robot_control
 {
   enum
@@ -32,7 +34,7 @@ namespace aerial_robot_control
                     boost::shared_ptr<aerial_robot_navigation::BaseNavigator> navigator,
                     double ctrl_loop_rate
                     ) override;
-    void setFfInterWrench(int id, Eigen::VectorXd des_int_wrench){ff_inter_wrench_list_[id] = des_int_wrench;}
+    void setFfInterWrench(int id, const Eigen::VectorXd& des_int_wrench);
   private:
     boost::shared_ptr<BeetleRobotModel> beetle_robot_model_;
     boost::shared_ptr<aerial_robot_navigation::BeetleNavigator> beetle_navigator_;
@@ -50,6 +52,16 @@ namespace aerial_robot_control
     std::map<int, Eigen::VectorXd> inter_wrench_list_;
     std::map<int, Eigen::VectorXd> wrench_comp_list_;
     std::map<int, Eigen::VectorXd> ff_inter_wrench_list_;
+    std::map<int, ros::Time> ff_inter_wrench_stamp_list_;
+    std::map<int, uint32_t> ff_inter_wrench_seq_list_;
+    std::map<int, bool> ff_inter_wrench_has_stamp_list_;
+    std::map<int, ros::WallTime> ff_inter_wrench_receive_time_list_;
+
+    mutable std::mutex wrench_data_mutex_;
+
+    std::map<int, Eigen::VectorXd> getEstimatedWrenchSnapshot() const;
+    std::map<int, Eigen::VectorXd> getFfInterWrenchSnapshot() const;
+    void publishDesiredInteractionWrench();
 
     /* external wrench compensation */
     bool pd_wrench_comp_mode_;
@@ -59,6 +71,8 @@ namespace aerial_robot_control
     int pre_module_state_;
 
     bool des_wrench_pub_flag_;
+    bool ff_inter_wrench_require_stamp_;
+    double ff_inter_wrench_timeout_;
 
     double comp_term_update_freq_;
     double prev_comp_update_time_;
@@ -79,6 +93,7 @@ namespace aerial_robot_control
     ros::Publisher internal_wrench_pub_;
     ros::Publisher wrench_comp_pid_pub_;
     ros::Publisher des_inter_wrench_pub_;
+    ros::Publisher legacy_des_inter_wrench_pub_;
     void controlCore() override;
     
     virtual void ffInterWrenchCallback(const beetle::TaggedWrench & msg);

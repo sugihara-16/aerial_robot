@@ -45,7 +45,7 @@ navigation:
 
   #morphing
   default_morphing_vel: 0.04
-  joint_process_func: 2 # 0 -> CONSTANT, 1 -> FRAC, 2 -> EXP
+  joint_process_func: 3 # 0 -> CONSTANT, 1 -> FRAC, 2 -> EXP, 3 -> TRAPEZOID
   free_joint_flag: false
   max_teleop_xy_vel: 0.2
   max_teleop_z_vel: 0.2

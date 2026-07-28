@@ -9,10 +9,14 @@ using namespace aerial_robot_navigation;
 NinjaNavigator::NinjaNavigator():
   BeetleNavigator(),
   module_joint_num_(2),
+  asm_xy_control_mode_(POS_CONTROL_MODE),
   morphing_flag_(false),
+  disassembly_flag_(false),
   asm_teleop_reset_time_(0),
   asm_vel_based_waypoint_(false),
-  pure_vel_control_flag_(false)
+  yaw_teleop_flag_(false),
+  pure_vel_control_flag_(false),
+  lpf_init_flag_(true)
 {
 }
 
@@ -51,6 +55,7 @@ void NinjaNavigator::update()
   updateEntSysState();
   updateMyState();
   calcCenterOfMoving();
+  calcModulesFkTransform();
 
   if(ros::Time::now().toSec() - prev_morphing_stamp_ > morphing_process_interval_)
     {
@@ -86,13 +91,13 @@ void NinjaNavigator::update()
         KDL::Frame current_com;
         KDL::Frame target_cog_pose;
         KDL::Frame target_com_pose;
-        KDL::Frame raw_base2cog; // base2cog conversion without desire coord process
+        KDL::Frame raw_cog2base;
         geometry_msgs::TransformStamped transformStamped;
         target_com_pose.M = target_com_rot_;
         tf::vectorTFToKDL(getTargetPosCand(),target_com_pose.p);
-        raw_base2cog.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
+        raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
         // target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse();
-        target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>() * raw_base2cog;
+        target_cog_pose = target_com_pose * getCom2Base<KDL::Frame>().Inverse() * raw_cog2base;
 
         geometry_msgs::TransformStamped tf;
 
@@ -137,7 +142,7 @@ void NinjaNavigator::update()
       joint_control_pub_.publish(joints_ctrl_msg);
       // set current positions to target positions
       my_tgt_joints_pos_(YAW) = my_crr_joints_pos_(YAW);
-      my_tgt_joints_pos_(PITCH) = my_tgt_joints_pos_(PITCH);
+      my_tgt_joints_pos_(PITCH) = my_crr_joints_pos_(PITCH);
     }
   
   sensor_msgs::JointState dock_joint_pos_msg;  
@@ -213,10 +218,12 @@ void NinjaNavigator::calcCenterOfMoving()
   geometry_msgs::Point cog_com_dist_msg;
   if(!current_assembled_){
 
-    KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-    raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+    KDL::Frame raw_cog2base;
+    raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
     KDL::Frame com_frame = raw_cog2base;
     setCoM2Base(com_frame);
+    setCog2ComWrenchXStar(WrenchTransform::Identity());
+    setCom2CogWrenchXStar(WrenchTransform::Identity());
     cog_com_dist_msg.x = Cog2CoM_.p.x();
     cog_com_dist_msg.y = Cog2CoM_.p.y();
     cog_com_dist_msg.z = Cog2CoM_.p.z();
@@ -305,167 +312,34 @@ void NinjaNavigator::calcCenterOfMoving()
         KDL::Frame com_frame;
         com_frame.p = KDL::Rotation::RPY(0,0,com_cog_arg) * KDL::Vector(pseudo_cog_com_dist_,0,0);
         com_frame.M = KDL::Rotation::RPY(0,0,M_PI + com_cog_arg);
-        KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-        raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+        KDL::Frame raw_cog2base;
+        raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
         setCoM2Base(raw_cog2base * com_frame);
+        setCom2CogWrenchXStar(WrenchTransform::Identity());
+        setCog2ComWrenchXStar(WrenchTransform::Identity());
       }
     else
       {
-        KDL::Frame com_frame;
-        KDL::Chain chain;
-        std::string left_dock = "pitch_connect_point";
-        std::string right_dock = "yaw_connect_point";
         if(my_id_ == leader_id_)
           {
-            KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-            raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
+            KDL::Frame raw_cog2base;
+            raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
             KDL::Frame com_frame = raw_cog2base;
             setCoM2Base(com_frame);
+            setCom2CogWrenchXStar(WrenchTransform::Identity());
+            setCog2ComWrenchXStar(WrenchTransform::Identity());
           }
         else
           {
-            if (my_id_ < leader_id_)
-              {
-                /*Calculate FK*/
-                for(auto & it: assembled_modules_data_)
-                  {
-                    ModuleData data = it.second;
-                    if(it.first < my_id_)
-                      {
-                        continue;
-                      }
-                    else if(it.first == my_id_)
-                      {
-                        if(!data.module_tree_.getChain("fc",right_dock,chain))
-                          {
-                            ROS_ERROR_STREAM("Failed to get a chain of module" << it.first);
-                            return;
-                          }
-                        KDL::ChainFkSolverPos_recursive fk_solver(chain);
-                        KDL::Frame frame;
-                        KDL::JntArray joint_positions(1);
-                        joint_positions(0) = data.des_joint_pos_(YAW);
-                        if (fk_solver.JntToCart(joint_positions, frame) < 0)
-                          {
-                            ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
-                            return;
-                          }
-                        com_frame = com_frame * frame;
-                      }
-                    else if(my_id_ < it.first && it.first < leader_id_)
-                      {
-                        if(!data.module_tree_.getChain(left_dock,right_dock,chain))
-                          {
-                            ROS_ERROR_STREAM("Failed to get a chain of module" << it.first);
-                            return;
-                          }
-                        KDL::ChainFkSolverPos_recursive fk_solver(chain);
-                        KDL::Frame frame;
-                        KDL::JntArray joint_positions(2);
-                        joint_positions(0) = data.des_joint_pos_(PITCH);
-                        joint_positions(1) = data.des_joint_pos_(YAW);
-                        if (fk_solver.JntToCart(joint_positions, frame) < 0) {
-                          ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
-                          return;
-                        }
-                        com_frame = com_frame * frame;
-                      }
-                    else if( it.first == leader_id_)
-                      {
-                        if(!data.module_tree_.getChain(left_dock,"fc",chain))
-                          {
-                            ROS_ERROR_STREAM("Failed to get a chain of module" << it.first);
-                            return;
-                          }
-                        KDL::ChainFkSolverPos_recursive fk_solver(chain);
-                        KDL::Frame frame;
-                        KDL::JntArray joint_positions(1);
-                        joint_positions(0) = data.des_joint_pos_(PITCH);
-                        if (fk_solver.JntToCart(joint_positions, frame) < 0) {
-                          ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
-                          return;
-                        }
-                        com_frame = com_frame * frame;
-                      }
-                    else if(leader_id_ < it.first)
-                      {
-                        continue;
-                      }
-                  }
-                com_frame = com_frame.Inverse();
-              }
-            else
-              {
-                /*Calculate FK*/
-                for(auto & it: assembled_modules_data_)
-                  {
-                    ModuleData data = it.second;
-                    if(it.first < leader_id_)
-                      {
-                        continue;
-                      }
-                    else if( it.first == leader_id_)
-                      {
-                        if(!data.module_tree_.getChain("fc",right_dock,chain))
-                          {
-                            ROS_ERROR_STREAM("Failed to get a chain of module" << it.first);
-                            return;
-                          }
-                        KDL::ChainFkSolverPos_recursive fk_solver(chain);
-                        KDL::Frame frame;
-                        KDL::JntArray joint_positions(1);
-                        joint_positions(0) = data.des_joint_pos_(YAW);
-                        if (fk_solver.JntToCart(joint_positions, frame) < 0) {
-                          ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
-                          return;
-                        }
-                        com_frame = com_frame * frame;
-                      }
-                    else if(leader_id_ < it.first && it.first < my_id_)
-                      {
-                        if(!data.module_tree_.getChain(left_dock,right_dock,chain))
-                          {
-                            ROS_ERROR_STREAM("Failed to get a chain of module" << it.first);
-                            return;
-                          }
-                        KDL::ChainFkSolverPos_recursive fk_solver(chain);
-                        KDL::Frame frame;
-                        KDL::JntArray joint_positions(2);
-                        joint_positions(0) = data.des_joint_pos_(PITCH);
-                        joint_positions(1) = data.des_joint_pos_(YAW);
-                        if (fk_solver.JntToCart(joint_positions, frame) < 0) {
-                          ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
-                          return;
-                        }
-                        com_frame = com_frame * frame;
-                      }
-                    else if(it.first == my_id_)
-                      {
-                        if(!data.module_tree_.getChain(left_dock,"fc",chain))
-                          {
-                            ROS_ERROR_STREAM("Failed to get a chain of module" << it.first);
-                            return;
-                          }
-                        KDL::ChainFkSolverPos_recursive fk_solver(chain);
-                        KDL::Frame frame;
-                        KDL::JntArray joint_positions(1);
-                        joint_positions(0) = data.des_joint_pos_(PITCH);
-                        if (fk_solver.JntToCart(joint_positions, frame) < 0) {
-                          ROS_ERROR_STREAM("Failed to compute FK for module" << it.first);
-                          return;
-                        }
-                        com_frame = com_frame * frame;
-                        test_frame_ = com_frame;
-                      }
-                    else if(my_id_ < it.first)
-                      {
-                        continue;
-                      }
-                  }
-              }
-            KDL::Frame raw_cog2base; // co2base conversion without desire coord process
-            raw_cog2base.p = ninja_robot_model_->getCogDesireOrientation<KDL::Rotation>().Inverse() * ninja_robot_model_->getCog2Baselink<KDL::Frame>().p;
-            setCoM2Base(raw_cog2base * com_frame);
+            setCoM2Base(calcCom2BaseTransform(my_id_));
+
+            const Eigen::Affine3d T_com2base = getCom2Base<Eigen::Affine3d>();
+            const Eigen::Affine3d T_cog2base =
+              ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>().inverse();
+            const Eigen::Affine3d T_com2cog = T_cog2base.inverse() * T_com2base;
+            const Eigen::Affine3d T_cog2com = T_com2base.inverse() * T_cog2base;
+            setCom2CogWrenchXStar(makeWrenchXstar(T_com2cog));
+            setCog2ComWrenchXStar(makeWrenchXstar(T_cog2com));
           }
       }
 
@@ -485,6 +359,209 @@ void NinjaNavigator::calcCenterOfMoving()
   }
 
   // if(control_flag_) current_assembled_ = true;
+}
+
+KDL::Frame NinjaNavigator::calcCom2BaseTransform(int module_id)
+{
+  if(module_id == leader_id_)
+    {
+      KDL::Frame raw_cog2base;
+      raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
+      return raw_cog2base;
+    }
+
+  KDL::Frame leader_fc_to_module_fc;
+  const std::string left_dock = "pitch_connect_point";
+  const std::string right_dock = "yaw_connect_point";
+
+  if(module_id < leader_id_)
+    {
+      for(const auto& item: assembled_modules_data_)
+        {
+          const int id = item.first;
+          const ModuleData& data = item.second;
+          KDL::Chain chain;
+
+          if(id < module_id) continue;
+          if(id == module_id)
+            {
+              if(!data.module_tree_.getChain("fc", right_dock, chain))
+                {
+                  ROS_ERROR_STREAM("Failed to get a chain of module " << id);
+                  return KDL::Frame::Identity();
+                }
+              KDL::ChainFkSolverPos_recursive solver(chain);
+              KDL::Frame frame;
+              KDL::JntArray q(1);
+              q(0) = data.des_joint_pos_(YAW);
+              if(solver.JntToCart(q, frame) < 0)
+                {
+                  ROS_ERROR_STREAM("Failed to compute FK for module " << id);
+                  return KDL::Frame::Identity();
+                }
+              leader_fc_to_module_fc = leader_fc_to_module_fc * frame;
+            }
+          else if(module_id < id && id < leader_id_)
+            {
+              if(!data.module_tree_.getChain(left_dock, right_dock, chain))
+                {
+                  ROS_ERROR_STREAM("Failed to get a chain of module " << id);
+                  return KDL::Frame::Identity();
+                }
+              KDL::ChainFkSolverPos_recursive solver(chain);
+              KDL::Frame frame;
+              KDL::JntArray q(2);
+              q(0) = data.des_joint_pos_(PITCH);
+              q(1) = data.des_joint_pos_(YAW);
+              if(solver.JntToCart(q, frame) < 0)
+                {
+                  ROS_ERROR_STREAM("Failed to compute FK for module " << id);
+                  return KDL::Frame::Identity();
+                }
+              leader_fc_to_module_fc = leader_fc_to_module_fc * frame;
+            }
+          else if(id == leader_id_)
+            {
+              if(!data.module_tree_.getChain(left_dock, "fc", chain))
+                {
+                  ROS_ERROR_STREAM("Failed to get a chain of module " << id);
+                  return KDL::Frame::Identity();
+                }
+              KDL::ChainFkSolverPos_recursive solver(chain);
+              KDL::Frame frame;
+              KDL::JntArray q(1);
+              q(0) = data.des_joint_pos_(PITCH);
+              if(solver.JntToCart(q, frame) < 0)
+                {
+                  ROS_ERROR_STREAM("Failed to compute FK for module " << id);
+                  return KDL::Frame::Identity();
+                }
+              leader_fc_to_module_fc = leader_fc_to_module_fc * frame;
+            }
+        }
+    }
+  else
+    {
+      for(const auto& item: assembled_modules_data_)
+        {
+          const int id = item.first;
+          const ModuleData& data = item.second;
+          KDL::Chain chain;
+
+          if(id < leader_id_) continue;
+          if(id == leader_id_)
+            {
+              if(!data.module_tree_.getChain("fc", right_dock, chain))
+                {
+                  ROS_ERROR_STREAM("Failed to get a chain of module " << id);
+                  return KDL::Frame::Identity();
+                }
+              KDL::ChainFkSolverPos_recursive solver(chain);
+              KDL::Frame frame;
+              KDL::JntArray q(1);
+              q(0) = data.des_joint_pos_(YAW);
+              if(solver.JntToCart(q, frame) < 0)
+                {
+                  ROS_ERROR_STREAM("Failed to compute FK for module " << id);
+                  return KDL::Frame::Identity();
+                }
+              leader_fc_to_module_fc = leader_fc_to_module_fc * frame;
+            }
+          else if(leader_id_ < id && id < module_id)
+            {
+              if(!data.module_tree_.getChain(left_dock, right_dock, chain))
+                {
+                  ROS_ERROR_STREAM("Failed to get a chain of module " << id);
+                  return KDL::Frame::Identity();
+                }
+              KDL::ChainFkSolverPos_recursive solver(chain);
+              KDL::Frame frame;
+              KDL::JntArray q(2);
+              q(0) = data.des_joint_pos_(PITCH);
+              q(1) = data.des_joint_pos_(YAW);
+              if(solver.JntToCart(q, frame) < 0)
+                {
+                  ROS_ERROR_STREAM("Failed to compute FK for module " << id);
+                  return KDL::Frame::Identity();
+                }
+              leader_fc_to_module_fc = leader_fc_to_module_fc * frame;
+            }
+          else if(id == module_id)
+            {
+              if(!data.module_tree_.getChain(left_dock, "fc", chain))
+                {
+                  ROS_ERROR_STREAM("Failed to get a chain of module " << id);
+                  return KDL::Frame::Identity();
+                }
+              KDL::ChainFkSolverPos_recursive solver(chain);
+              KDL::Frame frame;
+              KDL::JntArray q(1);
+              q(0) = data.des_joint_pos_(PITCH);
+              if(solver.JntToCart(q, frame) < 0)
+                {
+                  ROS_ERROR_STREAM("Failed to compute FK for module " << id);
+                  return KDL::Frame::Identity();
+                }
+              leader_fc_to_module_fc = leader_fc_to_module_fc * frame;
+            }
+        }
+      leader_fc_to_module_fc = leader_fc_to_module_fc.Inverse();
+    }
+
+  KDL::Frame raw_cog2fc;
+  raw_cog2fc.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
+  return leader_fc_to_module_fc * raw_cog2fc;
+}
+
+void NinjaNavigator::calcModulesFkTransform()
+{
+  if(assembled_modules_data_.empty()) return;
+
+  const std::string left_dock = "pitch_connect_point";
+  const std::string right_dock = "yaw_connect_point";
+
+  for(auto& item: assembled_modules_data_)
+    {
+      const int id = item.first;
+      ModuleData& data = item.second;
+
+      KDL::Frame yaw_from_base = KDL::Frame::Identity();
+      KDL::Chain yaw_chain;
+      if(data.module_tree_.getChain("fc", right_dock, yaw_chain))
+        {
+          KDL::ChainFkSolverPos_recursive solver(yaw_chain);
+          KDL::Frame frame;
+          KDL::JntArray q(1);
+          q(0) = data.des_joint_pos_(YAW);
+          if(solver.JntToCart(q, frame) >= 0) yaw_from_base = frame.Inverse();
+          else ROS_ERROR_STREAM("FK failed for module " << id << " yaw dock");
+        }
+      else ROS_ERROR_STREAM("Failed to get yaw dock chain for module " << id);
+
+      KDL::Frame pitch_from_base = KDL::Frame::Identity();
+      KDL::Chain pitch_chain;
+      if(data.module_tree_.getChain("fc", left_dock, pitch_chain))
+        {
+          KDL::ChainFkSolverPos_recursive solver(pitch_chain);
+          KDL::Frame frame;
+          KDL::JntArray q(1);
+          q(0) = data.des_joint_pos_(PITCH);
+          if(solver.JntToCart(q, frame) >= 0) pitch_from_base = frame.Inverse();
+          else ROS_ERROR_STREAM("FK failed for module " << id << " pitch dock");
+        }
+      else ROS_ERROR_STREAM("Failed to get pitch dock chain for module " << id);
+
+      const KDL::Frame com_from_base = calcCom2BaseTransform(id).Inverse();
+      const Eigen::Affine3d T_yaw_from_base = aerial_robot_model::kdlToEigen(yaw_from_base);
+      const Eigen::Affine3d T_pitch_from_base = aerial_robot_model::kdlToEigen(pitch_from_base);
+      const Eigen::Affine3d T_com_from_base = aerial_robot_model::kdlToEigen(com_from_base);
+      const Eigen::Affine3d T_base_from_cog =
+        ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>().inverse();
+
+      data.cog2yaw_connect_ = makeWrenchXstar(T_yaw_from_base * T_base_from_cog);
+      data.cog2pitch_connect_ = makeWrenchXstar(T_pitch_from_base * T_base_from_cog);
+      data.cog2com_ = makeWrenchXstar(T_com_from_base * T_base_from_cog);
+    }
 }
 
 void NinjaNavigator::convertTargetPosFromCoG2CoM()
@@ -521,11 +598,13 @@ void NinjaNavigator::convertTargetPosFromCoG2CoM()
   /*Target pose conversion*/
   KDL::Frame target_com_pose;
   KDL::Frame target_my_pose;
-  KDL::Frame raw_base2cog; // base2cog conversion without desire coord process
+  KDL::Frame raw_base2cog;
+  KDL::Frame raw_cog2base;
   target_com_pose.M = target_com_rot_;
   tf::vectorTFToKDL(getTargetPosCand(),target_com_pose.p);
   raw_base2cog.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
-  target_my_pose = target_com_pose * getCom2Base<KDL::Frame>() * raw_base2cog; // com -> cog
+  raw_cog2base.p = ninja_robot_model_->getCog2Baselink<KDL::Frame>().Inverse().p;
+  target_my_pose = target_com_pose * getCom2Base<KDL::Frame>().Inverse() * raw_cog2base;
 
   /*Target twist conversion*/
   // KDL::Vector target_com_vel;
@@ -537,7 +616,7 @@ void NinjaNavigator::convertTargetPosFromCoG2CoM()
   KDL::Twist target_my_twist;
   tf::vectorTFToKDL(getTargetVelCand(),target_com_twist.vel);
   tf::vectorTFToKDL(getTargetOmegaCand(),target_com_twist.rot);
-  target_my_twist = raw_base2cog * getCom2Base<KDL::Frame>() * target_com_twist; // com -> cog
+  target_my_twist = raw_base2cog * getCom2Base<KDL::Frame>().Inverse() * target_com_twist;
 
   tf::Vector3 target_pos, target_rot, target_vel, target_omega;
   double target_roll, target_pitch, target_yaw;
@@ -828,8 +907,21 @@ void NinjaNavigator::assemblyJointPosCallback(const sensor_msgs::JointStateConst
           double morphing_vel;
           if(msg->velocity.empty())
             morphing_vel = default_morphing_vel_;
+          else if(msg->velocity.size() == 1)
+            morphing_vel = msg->velocity.front();
+          else if(msg->velocity.size() == msg->name.size())
+            morphing_vel = msg->velocity.at(i);
           else
-            morphing_vel = msg->velocity.at(0);
+            {
+              ROS_ERROR("The joint velocity num must be zero, one, or equal to the name num [%d vs %d]",
+                        (int)msg->velocity.size(), (int)msg->name.size());
+              return;
+            }
+          if(morphing_vel <= 0.0)
+            {
+              ROS_ERROR("Morphing velocity must be positive: %f", morphing_vel);
+              return;
+            }
           //update joint info for FK
           ModuleData& data = assembled_modules_data_[id];
           int axis;
@@ -837,6 +929,11 @@ void NinjaNavigator::assemblyJointPosCallback(const sensor_msgs::JointStateConst
           if(target_joint_name == "pitch_dock_joint") axis = PITCH;
           data.goal_joint_pos_(axis) = target_joint_angle;
           data.start_joint_pos_(axis) = data.des_joint_pos_(axis);
+          if(abs(data.goal_joint_pos_(axis) - data.des_joint_pos_(axis)) < 1e-9)
+            {
+              data.first_joint_processed_time_[axis] = -1.0;
+              continue;
+            }
           data.first_joint_processed_time_[axis] = ros::Time::now().toSec();
           double conv_time = abs(data.goal_joint_pos_(axis) - data.des_joint_pos_(axis)) / morphing_vel;
           
@@ -859,6 +956,10 @@ void NinjaNavigator::assemblyJointPosCallback(const sensor_msgs::JointStateConst
             case EXP:
               data.joint_process_coef_[axis] = 2 * log(10)/conv_time;
               if(id == my_id_) ROS_INFO_STREAM("Morphing of module"<<my_id_ << "'s " <<(target_joint_name).c_str() << " has started. (" << conv_time << " sec)");
+              break;
+            case TRAPEZOID:
+              data.joint_process_coef_[axis] = conv_time;
+              if(id == my_id_) ROS_INFO_STREAM("Trapezoidal morphing of module"<<my_id_ << "'s " <<(target_joint_name).c_str() << " has started. (" << conv_time << " sec)");
               break;
             default:
               break;
@@ -1370,6 +1471,26 @@ void NinjaNavigator::morphingProcess()
             case EXP:
               data.des_joint_pos_(i) = data.start_joint_pos_(i) + (data.goal_joint_pos_(i) - data.start_joint_pos_(i)) * (1 - exp(-data.joint_process_coef_[i] * t));
               break;
+            case TRAPEZOID:
+              {
+                const double duration = data.joint_process_coef_[i];
+                const double tau = std::max(0.0, std::min(1.0, t / duration));
+                constexpr double ramp = 0.1;
+                double blend;
+                if(tau < ramp)
+                  blend = 0.5 * tau * tau / (ramp * (1.0 - ramp));
+                else if(tau <= 1.0 - ramp)
+                  blend = (tau - 0.5 * ramp) / (1.0 - ramp);
+                else
+                  {
+                    const double remaining = 1.0 - tau;
+                    blend = 1.0 - 0.5 * remaining * remaining
+                      / (ramp * (1.0 - ramp));
+                  }
+                data.des_joint_pos_(i) = data.start_joint_pos_(i)
+                  + (data.goal_joint_pos_(i) - data.start_joint_pos_(i)) * blend;
+                break;
+              }
             default:
               break;
             }
@@ -1409,7 +1530,7 @@ void NinjaNavigator::morphingProcess()
               return;
             }
         }
-      if(it != assembled_modules_data_.end())
+      if(std::next(it) != assembled_modules_data_.end())
         {
           auto right = std::next(it);
           right_id = right->first;
@@ -1514,6 +1635,61 @@ void NinjaNavigator::calcComStateProcess()
       ROS_ERROR_STREAM("CoM is not defined (comMovingProcess)");
       return;
     }
+}
+
+bool NinjaNavigator::getOpenChainWrenchTransforms(
+  std::map<int, OpenChainWrenchTransforms>& transforms) const
+{
+  transforms.clear();
+  const std::vector<int> ids = assembled_modules_ids_;
+  if(ids.empty()) return false;
+
+  for(size_t i = 0; i < ids.size(); ++i)
+    {
+      const int id = ids.at(i);
+      const auto current = assembled_modules_data_.find(id);
+      if(current == assembled_modules_data_.end())
+        {
+          ROS_ERROR_STREAM("No module data for assembled module " << id);
+          transforms.clear();
+          return false;
+        }
+
+      const ModuleData& data = current->second;
+      OpenChainWrenchTransforms xs;
+      xs.Ci_from_Di = data.cog2yaw_connect_.inverse();
+      xs.Ci_from_Dim1 = WrenchTransform::Zero();
+      xs.Ci_from_Cip1 = WrenchTransform::Identity();
+      xs.Ci_from_Base = data.cog2com_.inverse();
+
+      if(i > 0)
+        {
+          const ModuleData& previous = assembled_modules_data_.at(ids.at(i - 1));
+          xs.Ci_from_Dim1 = data.cog2com_.inverse()
+            * previous.cog2com_
+            * previous.cog2yaw_connect_.inverse();
+        }
+
+      if(i + 1 < ids.size())
+        {
+          const ModuleData& next = assembled_modules_data_.at(ids.at(i + 1));
+          xs.Ci_from_Cip1 = data.cog2com_.inverse() * next.cog2com_;
+        }
+
+      if(!xs.Ci_from_Di.allFinite() ||
+         !xs.Ci_from_Dim1.allFinite() ||
+         !xs.Ci_from_Cip1.allFinite() ||
+         !xs.Ci_from_Base.allFinite())
+        {
+          ROS_ERROR_STREAM("Invalid wrench transform for module " << id);
+          transforms.clear();
+          return false;
+        }
+
+      transforms.emplace(id, xs);
+    }
+
+  return true;
 }
 
 void NinjaNavigator::rosParamInit()

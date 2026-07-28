@@ -1,5 +1,7 @@
 #include <beetle/control/beetle_controller.h>
 
+#include <cmath>
+
 using namespace std;
 
 namespace aerial_robot_control
@@ -8,7 +10,9 @@ namespace aerial_robot_control
     GimbalrotorController(),
     pd_wrench_comp_mode_(false),
     pre_module_state_(SEPARATED),
-    des_wrench_pub_flag_(false)
+    des_wrench_pub_flag_(true),
+    ff_inter_wrench_require_stamp_(false),
+    ff_inter_wrench_timeout_(0.0)
   {
   }
 
@@ -56,7 +60,9 @@ namespace aerial_robot_control
     whole_external_wrench_pub_ = nh_.advertise<geometry_msgs::WrenchStamped>("whole_wrench", 1);
     internal_wrench_pub_ = nh_.advertise<geometry_msgs::WrenchStamped>("internal_wrench", 1);
     wrench_comp_pid_pub_ = nh_.advertise<aerial_robot_msgs::PoseControlPid>("debug/wrench_comp/pid", 1);
-    des_inter_wrench_pub_ = nh_.advertise<beetle::TaggedWrenches>("des_inter_wnrech", 1);
+    des_inter_wrench_pub_ = nh_.advertise<beetle::TaggedWrenches>("des_inter_wrench", 1, true);
+    // Preserve the misspelled legacy topic while users migrate to des_inter_wrench.
+    legacy_des_inter_wrench_pub_ = nh_.advertise<beetle::TaggedWrenches>("des_inter_wnrech", 1, true);
     int max_modules_num = beetle_navigator_->getMaxModuleNum();
     for(int i = 0; i < max_modules_num; i++){
       std::string module_name  = string("/") + beetle_navigator_->getMyName() + std::to_string(i+1);
@@ -66,8 +72,13 @@ namespace aerial_robot_control
       inter_wrench_list_.insert(make_pair(i+1, wrench));
       wrench_comp_list_.insert(make_pair(i+1, wrench));
       ff_inter_wrench_list_.insert(make_pair(i+1, wrench));
+      ff_inter_wrench_stamp_list_.insert(make_pair(i+1, ros::Time(0)));
+      ff_inter_wrench_seq_list_.insert(make_pair(i+1, 0));
+      ff_inter_wrench_has_stamp_list_.insert(make_pair(i+1, false));
+      ff_inter_wrench_receive_time_list_.insert(make_pair(i+1, ros::WallTime(0)));
       ff_inter_wrench_subs_.insert(make_pair(module_name, nh_.subscribe( module_name + string("/ff_inter_wrench"), 1, &BeetleController::ffInterWrenchCallback, this)));
     }
+    publishDesiredInteractionWrench();
     pid_controllers_.push_back(PID("f_x", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
     pid_controllers_.push_back(PID("f_y", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
     pid_controllers_.push_back(PID("f_z", wrench_comp_p_gain_, wrench_comp_i_gain_, wrench_comp_d_gain_));
@@ -89,18 +100,16 @@ namespace aerial_robot_control
     std::map<int, bool> assembly_flag = beetle_navigator_->getAssemblyFlags();
     int max_modules_num = beetle_navigator_->getMaxModuleNum();
     int module_state = beetle_navigator_-> getModuleState();
-    bool comp_update_flag = false;
-    double comp_update_interval = 1  / comp_term_update_freq_;
     if(beetle_navigator_->getControlFlag() &&
        module_state != SEPARATED){
       calcInteractionWrench();
-      comp_update_flag = true;
     }else{
+      std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+      for(int i = 0; i < max_modules_num; i++) est_wrench_list_[i+1] = Eigen::VectorXd::Zero(6);
       for(int i = 0; i < max_modules_num; i++){
-        est_wrench_list_[i+1] = Eigen::VectorXd::Zero(6);
-        inter_wrench_list_[i+1] = Eigen::VectorXd::Zero(6);
-        wrench_comp_list_[i+1] = Eigen::VectorXd::Zero(6);
-      }
+          inter_wrench_list_[i+1] = Eigen::VectorXd::Zero(6);
+          wrench_comp_list_[i+1] = Eigen::VectorXd::Zero(6);
+        }
     }
 
     double mass_inv = 1 / beetle_robot_model_->getMass();
@@ -114,7 +123,8 @@ namespace aerial_robot_control
 
       /* set proper gains for wrench comp */
       int module_num = 0;
-      for(const auto & item : est_wrench_list_){
+      const auto estimated_wrenches = getEstimatedWrenchSnapshot();
+      for(const auto & item : estimated_wrenches){
         if(assembly_flag[item.first]){
           module_num ++;
         }
@@ -218,33 +228,6 @@ namespace aerial_robot_control
 
       wrench_comp_pid_pub_.publish(wrench_pid_msg_);
 
-      /*publish desire internal wrench*/
-      if(des_wrench_pub_flag_)
-        {
-          beetle::TaggedWrenches all_tagged_des_wrenche_msg;
-          std::vector<int> assembled_ids = beetle_navigator_->getAssemblyIds();
-          all_tagged_des_wrenche_msg.tagged_wrenches.resize(assembled_ids.size());
-          int cnt =0;
-          for(const auto id: assembled_ids)
-            {
-              beetle::TaggedWrench tagged_des_wrench_msg;
-              geometry_msgs::WrenchStamped des_wrench_msg;
-              Eigen::VectorXd des_wrench = ff_inter_wrench_list_[id];
-              des_wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
-              des_wrench_msg.wrench.force.x = des_wrench(0);
-              des_wrench_msg.wrench.force.y = des_wrench(1);
-              des_wrench_msg.wrench.force.z = des_wrench(2);
-              des_wrench_msg.wrench.torque.x = des_wrench(3);
-              des_wrench_msg.wrench.torque.y = des_wrench(4);
-              des_wrench_msg.wrench.torque.z = des_wrench(5);
-
-              tagged_des_wrench_msg.index = id;
-              tagged_des_wrench_msg.wrench = des_wrench_msg;
-              all_tagged_des_wrenche_msg.tagged_wrenches[cnt] = tagged_des_wrench_msg;
-              cnt ++;
-            }
-          des_inter_wrench_pub_.publish(all_tagged_des_wrenche_msg);
-        }
     }else{
       pid_controllers_.at(FX).reset();
       pid_controllers_.at(FY).reset();
@@ -259,6 +242,8 @@ namespace aerial_robot_control
       pid_controllers_.at(PITCH).setICompTerm(0.0);
       pid_controllers_.at(YAW).setICompTerm(0.0);
     }
+
+    publishDesiredInteractionWrench();
       
     GimbalrotorController::controlCore();
     pre_module_state_ = module_state;
@@ -290,7 +275,9 @@ namespace aerial_robot_control
     int module_num = 0;
     std::map<int, bool> assembly_flag = beetle_navigator_->getAssemblyFlags();
 
-    for(const auto & item : est_wrench_list_){
+    const auto estimated_wrenches = getEstimatedWrenchSnapshot();
+    const auto desired_wrenches = getFfInterWrenchSnapshot();
+    for(const auto & item : estimated_wrenches){
       if(assembly_flag[item.first]){
       W_sum += item.second;
       module_num ++;
@@ -311,7 +298,7 @@ namespace aerial_robot_control
 
     /* 2. calculate interactional wrench for each module*/
     Eigen::VectorXd left_inter_wrench = Eigen::VectorXd::Zero(6); //'left_inter_wrench' represents the wrench applied from right-side module to left-side module
-    for(const auto & item : est_wrench_list_){
+    for(const auto & item : estimated_wrenches){
       if(assembly_flag[item.first]){
         Eigen::VectorXd right_inter_wrench = item.second - W_w + left_inter_wrench;
         inter_wrench_list_[item.first] = right_inter_wrench;
@@ -335,7 +322,7 @@ namespace aerial_robot_control
     Eigen::VectorXd wrench_comp_sum_left = Eigen::VectorXd::Zero(6);
     for(int i = leader_id-1; i > 0; i--){
       if(assembly_flag[i]){
-        wrench_comp_sum_left += -ff_inter_wrench_list_[i] + inter_wrench_list_[i];
+        wrench_comp_sum_left += -desired_wrenches.at(i) + inter_wrench_list_[i];
         // wrench_comp_list_[i] += wrench_comp_gain_ *  wrench_comp_sum_left;
         wrench_comp_list_[i] = wrench_comp_sum_left;
         right_module_id = i;
@@ -349,7 +336,7 @@ namespace aerial_robot_control
     Eigen::VectorXd wrench_comp_sum_right = Eigen::VectorXd::Zero(6);
     for(int i = leader_id+1; i <= max_modules_num; i++){
       if(assembly_flag[i]){
-        wrench_comp_sum_right += ff_inter_wrench_list_[left_module_id] - inter_wrench_list_[left_module_id];
+        wrench_comp_sum_right += desired_wrenches.at(left_module_id) - inter_wrench_list_[left_module_id];
         // wrench_comp_list_[i] += wrench_comp_gain_ * wrench_comp_sum_right;
         wrench_comp_list_[i] = wrench_comp_sum_right;
         left_module_id = i;
@@ -363,6 +350,9 @@ namespace aerial_robot_control
     GimbalrotorController::rosParamInit();
     ros::NodeHandle control_nh(nh_, "controller");
     getParam<bool>(control_nh, "pd_wrench_comp_mode", pd_wrench_comp_mode_, false);
+    getParam<bool>(control_nh, "publish_desired_inter_wrench", des_wrench_pub_flag_, true);
+    getParam<bool>(control_nh, "ff_inter_wrench_require_stamp", ff_inter_wrench_require_stamp_, false);
+    getParam<double>(control_nh, "ff_inter_wrench_timeout", ff_inter_wrench_timeout_, 0.0);
 
     double external_force_upper_limit, external_force_lower_limit, external_torque_upper_limit, external_torque_lower_limit;
     getParam<double>(control_nh, "external_force_upper_limit", external_force_upper_limit, 0.5);
@@ -463,7 +453,6 @@ namespace aerial_robot_control
   {
     int id = msg.index;
     geometry_msgs::Wrench wrench_msg = msg.wrench.wrench;
-    double time_stamp = msg.wrench.header.stamp.toSec();
     Eigen::VectorXd wrench = Eigen::VectorXd::Zero(6);
     wrench(0) =  wrench_msg.force.x;
     wrench(1) =  wrench_msg.force.y;
@@ -471,14 +460,25 @@ namespace aerial_robot_control
     wrench(3) =  wrench_msg.torque.x;
     wrench(4) =  wrench_msg.torque.y;
     wrench(5) =  wrench_msg.torque.z;
-    est_wrench_list_[id] = wrench;
+    if(!wrench.allFinite())
+      {
+        ROS_WARN_THROTTLE(1.0, "Rejecting a non-finite estimated wrench for module %d", id);
+        return;
+      }
+    std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+    const auto entry = est_wrench_list_.find(id);
+    if(entry == est_wrench_list_.end())
+      {
+        ROS_WARN_THROTTLE(1.0, "Rejecting an estimated wrench with invalid module id %d", id);
+        return;
+      }
+    entry->second = wrench;
   }
 
   void BeetleController::ffInterWrenchCallback(const beetle::TaggedWrench & msg)
   {
     int id = msg.index;
     geometry_msgs::Wrench wrench_msg = msg.wrench.wrench;
-    double time_stamp = msg.wrench.header.stamp.toSec();
     Eigen::VectorXd wrench = Eigen::VectorXd::Zero(6);
     wrench(0) =  wrench_msg.force.x;
     wrench(1) =  wrench_msg.force.y;
@@ -486,7 +486,146 @@ namespace aerial_robot_control
     wrench(3) =  wrench_msg.torque.x;
     wrench(4) =  wrench_msg.torque.y;
     wrench(5) =  wrench_msg.torque.z;
-    ff_inter_wrench_list_[id] = wrench;
+    if(!wrench.allFinite())
+      {
+        ROS_WARN_THROTTLE(1.0, "Rejecting a non-finite ff_inter_wrench for contact %d", id);
+        return;
+      }
+
+    const ros::Time incoming_stamp = msg.wrench.header.stamp;
+    const bool incoming_has_stamp = !incoming_stamp.isZero();
+    if(ff_inter_wrench_require_stamp_ && !incoming_has_stamp)
+      {
+        ROS_WARN_THROTTLE(1.0,
+                          "Rejecting unstamped ff_inter_wrench for contact %d; use the stamped command publisher",
+                          id);
+        return;
+      }
+
+    {
+      std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+      const auto entry = ff_inter_wrench_list_.find(id);
+      if(entry == ff_inter_wrench_list_.end())
+        {
+          ROS_WARN_THROTTLE(1.0, "Rejecting ff_inter_wrench with invalid contact id %d", id);
+          return;
+        }
+
+      const bool previous_has_stamp = ff_inter_wrench_has_stamp_list_.at(id);
+      if(incoming_has_stamp && previous_has_stamp)
+        {
+          const ros::Time previous_stamp = ff_inter_wrench_stamp_list_.at(id);
+          const uint32_t previous_seq = ff_inter_wrench_seq_list_.at(id);
+          if(incoming_stamp == previous_stamp && msg.wrench.header.seq == previous_seq)
+            {
+              if((entry->second - wrench).norm() > 1.0e-12)
+                ROS_WARN_THROTTLE(1.0,
+                                  "Ignoring conflicting ff_inter_wrench values with the same ordering key for contact %d",
+                                  id);
+              else
+                ff_inter_wrench_receive_time_list_.at(id) = ros::WallTime::now();
+              return;
+            }
+          if(incoming_stamp < previous_stamp ||
+             (incoming_stamp == previous_stamp && msg.wrench.header.seq < previous_seq))
+            {
+              ROS_WARN_THROTTLE(1.0,
+                                "Ignoring stale ff_inter_wrench for contact %d (stamp %.9f, latest %.9f)",
+                                id, incoming_stamp.toSec(), previous_stamp.toSec());
+              return;
+            }
+        }
+      else if(!incoming_has_stamp && previous_has_stamp)
+        {
+          ROS_WARN_THROTTLE(1.0,
+                            "Ignoring unstamped ff_inter_wrench for contact %d after stamped commands were received",
+                            id);
+          return;
+        }
+
+      entry->second = wrench;
+      ff_inter_wrench_receive_time_list_.at(id) = ros::WallTime::now();
+      if(incoming_has_stamp)
+        {
+          ff_inter_wrench_stamp_list_.at(id) = incoming_stamp;
+          ff_inter_wrench_seq_list_.at(id) = msg.wrench.header.seq;
+          ff_inter_wrench_has_stamp_list_.at(id) = true;
+        }
+    }
+    publishDesiredInteractionWrench();
+  }
+
+  void BeetleController::setFfInterWrench(int id, const Eigen::VectorXd& desired_wrench)
+  {
+    if(desired_wrench.size() != 6 || !desired_wrench.allFinite()) return;
+    {
+      std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+      const auto entry = ff_inter_wrench_list_.find(id);
+      if(entry == ff_inter_wrench_list_.end()) return;
+      entry->second = desired_wrench;
+      ff_inter_wrench_receive_time_list_.at(id) = ros::WallTime::now();
+    }
+    publishDesiredInteractionWrench();
+  }
+
+  std::map<int, Eigen::VectorXd> BeetleController::getEstimatedWrenchSnapshot() const
+  {
+    std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+    return est_wrench_list_;
+  }
+
+  std::map<int, Eigen::VectorXd> BeetleController::getFfInterWrenchSnapshot() const
+  {
+    std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+    std::map<int, Eigen::VectorXd> snapshot = ff_inter_wrench_list_;
+    if(ff_inter_wrench_timeout_ <= 0.0) return snapshot;
+
+    const ros::WallTime now = ros::WallTime::now();
+    for(auto& item: snapshot)
+      {
+        const ros::WallTime received = ff_inter_wrench_receive_time_list_.at(item.first);
+        if(!received.isZero() && (now - received).toSec() > ff_inter_wrench_timeout_)
+          item.second.setZero();
+      }
+    return snapshot;
+  }
+
+  void BeetleController::publishDesiredInteractionWrench()
+  {
+    if(!des_wrench_pub_flag_) return;
+
+    beetle::TaggedWrenches msg;
+    {
+      std::lock_guard<std::mutex> lock(wrench_data_mutex_);
+      msg.tagged_wrenches.reserve(ff_inter_wrench_list_.size());
+      const ros::WallTime now = ros::WallTime::now();
+      for(const auto& item: ff_inter_wrench_list_)
+      {
+        beetle::TaggedWrench tagged;
+        tagged.index = item.first;
+        tagged.wrench.header.seq = ff_inter_wrench_seq_list_.at(item.first);
+        tagged.wrench.header.stamp = ff_inter_wrench_has_stamp_list_.at(item.first)
+          ? ff_inter_wrench_stamp_list_.at(item.first)
+          : ros::Time(0);
+        tagged.wrench.header.frame_id = "accepted_ff_inter_wrench";
+
+        Eigen::VectorXd effective_wrench = item.second;
+        const ros::WallTime received = ff_inter_wrench_receive_time_list_.at(item.first);
+        if(ff_inter_wrench_timeout_ > 0.0 && !received.isZero() &&
+           (now - received).toSec() > ff_inter_wrench_timeout_)
+          effective_wrench.setZero();
+
+        tagged.wrench.wrench.force.x = effective_wrench(0);
+        tagged.wrench.wrench.force.y = effective_wrench(1);
+        tagged.wrench.wrench.force.z = effective_wrench(2);
+        tagged.wrench.wrench.torque.x = effective_wrench(3);
+        tagged.wrench.wrench.torque.y = effective_wrench(4);
+        tagged.wrench.wrench.torque.z = effective_wrench(5);
+        msg.tagged_wrenches.push_back(tagged);
+      }
+    }
+    des_inter_wrench_pub_.publish(msg);
+    legacy_des_inter_wrench_pub_.publish(msg);
   }
 
 } //namespace aerial_robot_controller

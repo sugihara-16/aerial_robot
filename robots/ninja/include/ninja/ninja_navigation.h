@@ -23,7 +23,8 @@ namespace aerial_robot_navigation
     {
      CONSTANT,
      FRAC,
-     EXP
+     EXP,
+     TRAPEZOID
     };
 
   enum ninja_control_frame
@@ -31,6 +32,29 @@ namespace aerial_robot_navigation
      LEFT_DOCK = LOCAL_FRAME + 1,
      RIGHT_DOCK
     };
+
+  using WrenchTransform = Eigen::Matrix<double, 6, 6>;
+
+  inline Eigen::Matrix3d wrenchSkew(const Eigen::Vector3d& v)
+  {
+    Eigen::Matrix3d skew;
+    skew << 0, -v.z(), v.y(),
+      v.z(), 0, -v.x(),
+      -v.y(), v.x(), 0;
+    return skew;
+  }
+
+  /* Transform a wrench from the source frame to the target frame described by T. */
+  inline WrenchTransform makeWrenchXstar(const Eigen::Affine3d& T)
+  {
+    const Eigen::Matrix3d R = T.rotation();
+    const Eigen::Vector3d p = T.translation();
+    WrenchTransform X = WrenchTransform::Zero();
+    X.topLeftCorner<3, 3>() = R;
+    X.bottomRightCorner<3, 3>() = R;
+    X.bottomLeftCorner<3, 3>() = wrenchSkew(p) * R;
+    return X;
+  }
 
   class ModuleData
   {
@@ -46,6 +70,11 @@ namespace aerial_robot_navigation
     std::vector<double> joint_process_coef_;
     KDL::JntArray goal_joint_pos_;
     KDL::JntArray start_joint_pos_;
+
+    /* Wrench transforms from this module's COG to the named target frame. */
+    WrenchTransform cog2yaw_connect_ = WrenchTransform::Identity();
+    WrenchTransform cog2pitch_connect_ = WrenchTransform::Identity();
+    WrenchTransform cog2com_ = WrenchTransform::Identity();
 
   };
   class NinjaNavigator : public BeetleNavigator
@@ -161,6 +190,26 @@ namespace aerial_robot_navigation
     {
       err_omega_candidate_ = value;
     }
+
+    inline void setCom2CogWrenchXStar(const WrenchTransform& X)
+    {
+      com2cog_wrench_xstar_ = X;
+    }
+
+    inline WrenchTransform getCom2CogWrenchXStar() const
+    {
+      return com2cog_wrench_xstar_;
+    }
+
+    inline void setCog2ComWrenchXStar(const WrenchTransform& X)
+    {
+      cog2com_wrench_xstar_ = X;
+    }
+
+    inline WrenchTransform getCog2ComWrenchXStar() const
+    {
+      return cog2com_wrench_xstar_;
+    }
     
         
     inline void setFinalTargetPosCandX( float value){  target_final_pos_candidate_.setX(value);}
@@ -191,6 +240,17 @@ namespace aerial_robot_navigation
     inline tf::Vector3 getErrVelCand() {return err_vel_candidate_;}
     inline tf::Vector3 getErrOmegaCand() {return err_omega_candidate_;}
 
+    struct OpenChainWrenchTransforms
+    {
+      WrenchTransform Ci_from_Di;    // ^Ci X*_{Di}: right contact i -> module i COG
+      WrenchTransform Ci_from_Dim1;  // ^Ci X*_{D(i-1)}: left contact -> module i COG
+      WrenchTransform Ci_from_Cip1;  // ^Ci X*_{C(i+1)}: next module COG -> module i COG
+      WrenchTransform Ci_from_Base;  // ^Ci X*_{Base}: common COM -> module i COG
+    };
+
+    bool getOpenChainWrenchTransforms(
+      std::map<int, OpenChainWrenchTransforms>& transforms) const;
+
   protected:
     std::mutex mutex_com2base_;
     
@@ -213,6 +273,8 @@ namespace aerial_robot_navigation
     void jointsCtrlCallback(const sensor_msgs::JointStateConstPtr& state);
     void comRotationProcess();
     void comMovingProcess();
+    KDL::Frame calcCom2BaseTransform(int module_id);
+    void calcModulesFkTransform();
 
     ros::Publisher target_com_pose_pub_;
     boost::shared_ptr<NinjaRobotModel> ninja_robot_model_;
@@ -255,6 +317,9 @@ namespace aerial_robot_navigation
     KDL::Frame test_frame_;
     KDL::Frame curr_com_pose_;
     KDL::Frame prev_com_pose_;
+
+    WrenchTransform com2cog_wrench_xstar_ = WrenchTransform::Identity();
+    WrenchTransform cog2com_wrench_xstar_ = WrenchTransform::Identity();
 
     int module_joint_num_;
     double default_morphing_vel_;

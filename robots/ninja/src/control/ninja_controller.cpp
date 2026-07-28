@@ -234,15 +234,13 @@ namespace aerial_robot_control
     wrench_msg.wrench.torque.z = est_external_wrench_cog(5);
     estimate_external_wrench_pub_.publish(wrench_msg);
 
-    //convert extimated external wrench from cog to com coordinates
-    Eigen::VectorXd est_external_wrench_com = est_external_wrench_cog;
-    Eigen::Matrix3d cog2com = (ninja_navigator_->getCom2Base<Eigen::Affine3d>() * ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>().inverse()).rotation();
-    est_external_wrench_com.head(3) = cog2com * est_external_wrench_cog.head(3);
-    est_external_wrench_com.tail(3) = cog2com * est_external_wrench_cog.tail(3);
+    // Convert the complete wrench, including the moment-arm term, from COG to COM.
+    const Eigen::Matrix<double, 6, 1> est_external_wrench_com =
+      ninja_navigator_->getCog2ComWrenchXStar() * est_external_wrench_cog;
 
     geometry_msgs::WrenchStamped wrench_msg_com;
     wrench_msg_com.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
-    wrench_msg_com.header.frame_id = my_name + "/cog";
+    wrench_msg_com.header.frame_id = my_name + "/center_of_moving";
     wrench_msg_com.wrench.force.x = est_external_wrench_com(0);
     wrench_msg_com.wrench.force.y = est_external_wrench_com(1);
     wrench_msg_com.wrench.force.z = est_external_wrench_com(2);
@@ -260,95 +258,165 @@ namespace aerial_robot_control
 
   void NinjaController::calcInteractionWrench()
   {
-    /* 1. calculate external wrench W_w for whole system (e.g. ground effects, model error and etc..)*/
-    Eigen::VectorXd W_w = Eigen::VectorXd::Zero(6);
-    Eigen::VectorXd W_sum = Eigen::VectorXd::Zero(6);
-    int module_num = 0;
-    std::map<int, bool> assembly_flag = ninja_navigator_->getAssemblyFlags();
+    using Wrench = Eigen::Matrix<double, 6, 1>;
+    using WrenchTransform = aerial_robot_navigation::WrenchTransform;
+    using ModuleTransforms = aerial_robot_navigation::NinjaNavigator::OpenChainWrenchTransforms;
 
-    for(const auto & item : est_wrench_list_){
-      if(assembly_flag[item.first]){
-        W_sum += item.second;
-        module_num ++;
-      }
-    }
+    const std::map<int, bool> assembly_flags = ninja_navigator_->getAssemblyFlags();
+    const std::vector<int> ids = ninja_navigator_->getAssemblyIds();
+    const std::map<int, Eigen::VectorXd> estimated_wrenches = getEstimatedWrenchSnapshot();
+    const std::map<int, Eigen::VectorXd> desired_wrenches = getFfInterWrenchSnapshot();
+    const int module_count = static_cast<int>(ids.size());
+    const int my_id = ninja_navigator_->getMyID();
+    if(module_count < 2) return;
 
-    if(!module_num) return;
-    W_w = W_sum / module_num;
-
-    int my_id = ninja_navigator_->getMyID();
-    std::string my_name = ninja_navigator_->getMyName() + std::to_string(my_id);
-
-    geometry_msgs::WrenchStamped wrench_msg;
-    wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
-    wrench_msg.header.frame_id =my_name + "/cog";
-    wrench_msg.wrench.force.x = W_w(0);
-    wrench_msg.wrench.force.y = W_w(1);
-    wrench_msg.wrench.force.z = W_w(2);
-    wrench_msg.wrench.torque.x = W_w(3);
-    wrench_msg.wrench.torque.y = W_w(4);
-    wrench_msg.wrench.torque.z = W_w(5);
-    whole_external_wrench_pub_.publish(wrench_msg);
-
-    /* 2. calculate interactional wrench for each module*/
-    Eigen::VectorXd left_inter_wrench = Eigen::VectorXd::Zero(6); //'left_inter_wrench' represents the wrench applied from right-side module to left-side module
-    for(const auto & item : est_wrench_list_){
-      if(assembly_flag[item.first]){
-        Eigen::VectorXd right_inter_wrench = item.second - W_w + left_inter_wrench;
-        inter_wrench_list_[item.first] = right_inter_wrench;
-        left_inter_wrench = right_inter_wrench;
-      }else{
-        inter_wrench_list_[item.first] = Eigen::VectorXd::Zero(6);
-      }
-    }
-    wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
-    wrench_msg.header.frame_id =my_name + "/cog";
-    wrench_msg.wrench.force.x = inter_wrench_list_[my_id](0);
-    wrench_msg.wrench.force.y = inter_wrench_list_[my_id](1);
-    wrench_msg.wrench.force.z = inter_wrench_list_[my_id](2);
-    wrench_msg.wrench.torque.x = inter_wrench_list_[my_id](3);
-    wrench_msg.wrench.torque.y = inter_wrench_list_[my_id](4);
-    wrench_msg.wrench.torque.z = inter_wrench_list_[my_id](5);
-    internal_wrench_pub_.publish(wrench_msg);
-    /* 3. calculate wrench compensation term for each module*/
-    int leader_id = ninja_navigator_->getLeaderID();
-    /* 3.1. process of leader*/
-    // wrench_comp_list_[leader_id] = -est_wrench_list_[leader_id] - W_w;
-    /* 3.2. process from leader to left*/
-    int right_module_id = leader_id;
-    Eigen::VectorXd wrench_comp_sum_left = Eigen::VectorXd::Zero(6);
-    for(int i = leader_id-1; i > 0; i--){
-      if(assembly_flag[i]){
-        wrench_comp_sum_left += ff_inter_wrench_list_[i] + inter_wrench_list_[i];
-        // wrench_comp_list_[i] += wrench_comp_gain_ *  wrench_comp_sum_left;
-        wrench_comp_list_[i] = wrench_comp_sum_left;
-        right_module_id = i;
-      }else{
-        wrench_comp_list_[i] = Eigen::VectorXd::Zero(6);
-      }
-    }
-    /* 3.3. process from leader to right*/
-    int max_modules_num = ninja_navigator_->getMaxModuleNum();
-    int left_module_id = leader_id;
-    Eigen::VectorXd wrench_comp_sum_right = Eigen::VectorXd::Zero(6);
-    for(int i = leader_id+1; i <= max_modules_num; i++){
-      if(assembly_flag[i]){
-        wrench_comp_sum_right +=- ff_inter_wrench_list_[left_module_id] - inter_wrench_list_[left_module_id];
-        // wrench_comp_list_[i] += wrench_comp_gain_ * wrench_comp_sum_right;
-        wrench_comp_list_[i] = wrench_comp_sum_right;
-        left_module_id = i;
-      }else{
-        wrench_comp_list_[i] = Eigen::VectorXd::Zero(6);
-      }
-    }
-    /* 4. convert compensation wrench from CoM to CoG coordinates */
-    if(ninja_navigator_->getCurrentAssembled())
+    std::map<int, ModuleTransforms> transforms;
+    if(!ninja_navigator_->getOpenChainWrenchTransforms(transforms))
       {
-        Eigen::VectorXd wrench_comp_com = wrench_comp_list_[ninja_navigator_->getMyID()];
-        Eigen::VectorXd wrench_comp_cog = wrench_comp_com;
-        Eigen::Matrix3d com2cog = (ninja_robot_model_->getCog2Baselink<Eigen::Affine3d>() * ninja_navigator_->getCom2Base<Eigen::Affine3d>().inverse()).rotation();
-        wrench_comp_cog.head(3) = com2cog * wrench_comp_com.head(3);
-        wrench_comp_list_[ninja_navigator_->getMyID()] = wrench_comp_cog;
+        ROS_ERROR_THROTTLE(1.0, "Failed to build open-chain wrench transforms");
+        for(const int id: ids) wrench_comp_list_[id] = Wrench::Zero();
+        return;
+      }
+
+    /* Common disturbance is represented as a per-module wrench in the common COM frame. */
+    Wrench common_disturbance = Wrench::Zero();
+    int valid_module_count = 0;
+    for(const int id: ids)
+      {
+        const auto flag = assembly_flags.find(id);
+        const auto wrench = estimated_wrenches.find(id);
+        if(flag == assembly_flags.end() || !flag->second || wrench == estimated_wrenches.end()) continue;
+        common_disturbance += wrench->second;
+        ++valid_module_count;
+      }
+    if(valid_module_count == 0) return;
+    common_disturbance /= static_cast<double>(valid_module_count);
+
+    geometry_msgs::WrenchStamped whole_wrench_msg;
+    whole_wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
+    whole_wrench_msg.header.frame_id = ninja_navigator_->getMyName()
+      + std::to_string(my_id) + "/center_of_moving";
+    whole_wrench_msg.wrench.force.x = common_disturbance(0);
+    whole_wrench_msg.wrench.force.y = common_disturbance(1);
+    whole_wrench_msg.wrench.force.z = common_disturbance(2);
+    whole_wrench_msg.wrench.torque.x = common_disturbance(3);
+    whole_wrench_msg.wrench.torque.y = common_disturbance(4);
+    whole_wrench_msg.wrench.torque.z = common_disturbance(5);
+    whole_external_wrench_pub_.publish(whole_wrench_msg);
+
+    /*
+     * Open-chain contact estimation. q_i is the wrench exerted by module i on
+     * module i+1, expressed at module i's right dock D_i. Only N-1 physical
+     * contacts are unknown; no virtual terminal contact or KKT constraint is used.
+     */
+    const int contact_count = module_count - 1;
+    Eigen::MatrixXd contact_matrix = Eigen::MatrixXd::Zero(6 * module_count,
+                                                            6 * contact_count);
+    Eigen::VectorXd module_residual = Eigen::VectorXd::Zero(6 * module_count);
+    for(int i = 0; i < module_count; ++i)
+      {
+        const int id = ids.at(i);
+        const ModuleTransforms& xs = transforms.at(id);
+        const auto estimated = estimated_wrenches.find(id);
+        Wrench estimated_base = Wrench::Zero();
+        if(estimated != estimated_wrenches.end()) estimated_base = estimated->second;
+        module_residual.segment<6>(6 * i) =
+          xs.Ci_from_Base * (estimated_base - common_disturbance);
+
+        if(i > 0)
+          contact_matrix.block<6, 6>(6 * i, 6 * (i - 1)) = xs.Ci_from_Dim1;
+        if(i < contact_count)
+          contact_matrix.block<6, 6>(6 * i, 6 * i) = -xs.Ci_from_Di;
+      }
+
+    Eigen::ColPivHouseholderQR<Eigen::MatrixXd> contact_solver(contact_matrix);
+    if(contact_solver.rank() < 6 * contact_count)
+      {
+        ROS_ERROR_THROTTLE(1.0, "Open-chain contact estimation matrix is rank deficient");
+        for(const int id: ids) wrench_comp_list_[id] = Wrench::Zero();
+        return;
+      }
+
+    const Eigen::VectorXd contact_wrenches = contact_solver.solve(module_residual);
+    if(!contact_wrenches.allFinite())
+      {
+        ROS_ERROR_THROTTLE(1.0, "Open-chain contact estimation produced invalid values");
+        for(const int id: ids) wrench_comp_list_[id] = Wrench::Zero();
+        return;
+      }
+
+    for(const int id: ids) inter_wrench_list_[id] = Wrench::Zero();
+    for(int i = 0; i < contact_count; ++i)
+      inter_wrench_list_[ids.at(i)] = contact_wrenches.segment<6>(6 * i);
+
+    const double residual_norm = (contact_matrix * contact_wrenches - module_residual).norm();
+    const double data_norm = std::max(1.0, module_residual.norm());
+    if(residual_norm / data_norm > 0.1)
+      ROS_WARN_STREAM_THROTTLE(1.0, "Large open-chain contact estimation residual: "
+                               << residual_norm / data_norm);
+
+    const Wrench my_contact = inter_wrench_list_.at(my_id);
+    geometry_msgs::WrenchStamped contact_msg;
+    contact_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
+    contact_msg.header.frame_id = ninja_navigator_->getMyName()
+      + std::to_string(my_id) + "/yaw_connect_point";
+    contact_msg.wrench.force.x = my_contact(0);
+    contact_msg.wrench.force.y = my_contact(1);
+    contact_msg.wrench.force.z = my_contact(2);
+    contact_msg.wrench.torque.x = my_contact(3);
+    contact_msg.wrench.torque.y = my_contact(4);
+    contact_msg.wrench.torque.z = my_contact(5);
+    internal_wrench_pub_.publish(contact_msg);
+
+    /*
+     * Open-chain compensation. Anchor the leader command at zero and propagate
+     * the N-1 physical contact errors toward both ends of the chain.
+     */
+    const int leader_id = ninja_navigator_->getLeaderID();
+    const auto leader = std::find(ids.begin(), ids.end(), leader_id);
+    if(leader == ids.end())
+      {
+        ROS_ERROR_THROTTLE(1.0, "Leader is not part of the assembled open chain");
+        for(const int id: ids) wrench_comp_list_[id] = Wrench::Zero();
+        return;
+      }
+    const int leader_index = static_cast<int>(std::distance(ids.begin(), leader));
+
+    std::vector<Wrench> module_compensation(module_count, Wrench::Zero());
+    auto contactErrorInCog = [&](int contact_index) -> Wrench
+      {
+        const int contact_id = ids.at(contact_index);
+        Wrench desired = Wrench::Zero();
+        const auto desired_it = desired_wrenches.find(contact_id);
+        if(desired_it != desired_wrenches.end()) desired = desired_it->second;
+        const Wrench current = inter_wrench_list_.at(contact_id);
+        return Wrench(transforms.at(contact_id).Ci_from_Di * (desired - current));
+      };
+
+    for(int i = leader_index; i < contact_count; ++i)
+      {
+        const Wrench delta = contactErrorInCog(i);
+        const WrenchTransform& current_from_next = transforms.at(ids.at(i)).Ci_from_Cip1;
+        module_compensation.at(i + 1) =
+          current_from_next.fullPivLu().solve(module_compensation.at(i) - delta);
+      }
+
+    for(int i = leader_index - 1; i >= 0; --i)
+      {
+        const Wrench delta = contactErrorInCog(i);
+        const WrenchTransform& current_from_next = transforms.at(ids.at(i)).Ci_from_Cip1;
+        module_compensation.at(i) = delta + current_from_next * module_compensation.at(i + 1);
+      }
+
+    for(int i = 0; i < module_count; ++i)
+      {
+        if(!module_compensation.at(i).allFinite())
+          {
+            ROS_ERROR_THROTTLE(1.0, "Open-chain compensation produced invalid values");
+            for(const int id: ids) wrench_comp_list_[id] = Wrench::Zero();
+            return;
+          }
+        wrench_comp_list_[ids.at(i)] = module_compensation.at(i);
       }
   }
 

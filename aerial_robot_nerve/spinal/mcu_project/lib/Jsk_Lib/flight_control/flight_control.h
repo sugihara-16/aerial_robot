@@ -56,6 +56,8 @@ public:
     start_control_flag_ = false;
     pwm_test_flag_ = false;
     integrate_flag_ = false;
+    force_landing_flag_ = false;
+    gimbal_set_flag_ = false;
   }
 
   inline AttitudeController& getAttController(){ return att_controller_;}

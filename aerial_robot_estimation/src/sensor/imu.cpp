@@ -252,8 +252,6 @@ namespace sensor_plugin
 
             estimator_->setQueueSize(1/sensor_dt_);
 
-            setStatus(Status::ACTIVE);
-
             /* fuser for 0: egomotion, 1: experiment */
             for(int mode = 0; mode < 2; mode++)
               {
@@ -311,6 +309,11 @@ namespace sensor_plugin
                       }
                   }
               }
+
+            // Other sensor callbacks start correcting the Kalman filters as
+            // soon as the IMU becomes active.  Publish ACTIVE only after every
+            // filter has completed its dimension/noise initialization.
+            setStatus(Status::ACTIVE);
           }
       }
 
@@ -492,6 +495,5 @@ namespace sensor_plugin
 /* plugin registration */
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(sensor_plugin::Imu, sensor_plugin::SensorBase);
-
 
 

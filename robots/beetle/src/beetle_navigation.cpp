@@ -8,6 +8,8 @@ using namespace aerial_robot_navigation;
 
 BeetleNavigator::BeetleNavigator():
   GimbalrotorNavigator(),
+  reconfig_flag_(false),
+  control_flag_(false),
   roll_pitch_control_flag_(false),
   pre_assembled_(false),
   current_assembled_(false),
@@ -16,6 +18,7 @@ BeetleNavigator::BeetleNavigator():
   tfBuffer_(),
   tfListener_(tfBuffer_),
   pre_assembled_modules_(0),
+  module_num_(0),
   my_index_(0),
   joy_roll_positive_flag_(false),
   joy_roll_negative_flag_(false),

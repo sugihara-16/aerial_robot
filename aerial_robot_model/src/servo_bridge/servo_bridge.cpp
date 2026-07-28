@@ -328,9 +328,6 @@ void ServoBridge::servoCtrlCallback(const sensor_msgs::JointStateConstPtr& servo
               return;
             }
 
-          mujoco_control_input_msg.name.push_back(servo_ctrl_msg->name.at(i));
-          mujoco_control_input_msg.position.push_back(servo_ctrl_msg->position.at(i));
-
           // use servo_name to search the servo_handler
           auto servo_handler = find_if(servos_handler_[servo_group_name].begin(), servos_handler_[servo_group_name].end(),
                                        [&](SingleServoHandlePtr s) {return servo_ctrl_msg->name.at(i)  == s->getName();});
@@ -344,6 +341,8 @@ void ServoBridge::servoCtrlCallback(const sensor_msgs::JointStateConstPtr& servo
           (*servo_handler)->setTargetAngleVal(servo_ctrl_msg->position[i], ValueType::RADIAN);
           target_angle_msg.index.push_back((*servo_handler)->getId());
           target_angle_msg.angles.push_back((*servo_handler)->getTargetAngleVal(ValueType::BIT));
+          mujoco_control_input_msg.name.push_back((*servo_handler)->getName());
+          mujoco_control_input_msg.position.push_back((*servo_handler)->getTargetAngleVal(ValueType::RADIAN));
 
           // process torque command if necessary
           if(servo_ctrl_msg->effort.size() == servo_ctrl_msg->name.size())
@@ -357,7 +356,7 @@ void ServoBridge::servoCtrlCallback(const sensor_msgs::JointStateConstPtr& servo
           if(simulation_mode_)
             {
               std_msgs::Float64 msg;
-              msg.data = servo_ctrl_msg->position[i];
+              msg.data = (*servo_handler)->getTargetAngleVal(ValueType::RADIAN);
               servo_target_pos_sim_pubs_[servo_group_name].at(distance(servos_handler_[servo_group_name].begin(), servo_handler)).publish(msg);
             }
         }
@@ -390,12 +389,12 @@ void ServoBridge::servoCtrlCallback(const sensor_msgs::JointStateConstPtr& servo
             }
 
           mujoco_control_input_msg.name.push_back(servo_handler->getName());
-          mujoco_control_input_msg.position.push_back(servo_ctrl_msg->position.at(i));
+          mujoco_control_input_msg.position.push_back(servo_handler->getTargetAngleVal(ValueType::RADIAN));
 
           if(simulation_mode_)
             {
               std_msgs::Float64 msg;
-              msg.data = servo_ctrl_msg->position[i];
+              msg.data = servo_handler->getTargetAngleVal(ValueType::RADIAN);
               servo_target_pos_sim_pubs_[servo_group_name].at(i).publish(msg);
             }
         }

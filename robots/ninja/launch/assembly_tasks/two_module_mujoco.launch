@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+  <arg name="headless" default="true"/>
+
+  <!-- Each Ninja keeps its own controller, estimator and ROS namespace. -->
+  <include file="$(find ninja)/launch/bringup.launch">
+    <arg name="robot_id" value="1"/>
+    <arg name="real_machine" value="false"/>
+    <arg name="simulation" value="true"/>
+    <arg name="mujoco" value="true"/>
+    <arg name="launch_mujoco" value="false"/>
+    <arg name="mujoco_model_prefix" value="ninja1/"/>
+    <arg name="launch_gazebo" value="false"/>
+    <arg name="headless" value="$(arg headless)"/>
+  </include>
+
+  <include file="$(find ninja)/launch/bringup.launch">
+    <arg name="robot_id" value="2"/>
+    <arg name="real_machine" value="false"/>
+    <arg name="simulation" value="true"/>
+    <arg name="mujoco" value="true"/>
+    <arg name="launch_mujoco" value="false"/>
+    <arg name="mujoco_model_prefix" value="ninja2/"/>
+    <arg name="launch_gazebo" value="false"/>
+    <!-- Avoid launching a second RViz when visualization is requested. -->
+    <arg name="headless" value="true"/>
+  </include>
+
+  <param name="/use_sim_time" value="true"/>
+
+  <!-- Normally loaded by each single-robot MuJoCo include.  The shared-world
+       launch owns that include, so load the hardware/controller config here. -->
+  <group ns="ninja1">
+    <rosparam file="$(find aerial_robot_simulation)/config/Mujoco.yaml"
+              command="load"/>
+    <!-- Dock joints must move through their MuJoCo actuators so that the weld
+         constraint reports a physical, continuous interaction wrench. -->
+    <rosparam param="simulation/direct_joint_position_exclusions">
+      [yaw_dock_joint, pitch_dock_joint]
+    </rosparam>
+  </group>
+  <group ns="ninja2">
+    <rosparam file="$(find aerial_robot_simulation)/config/Mujoco.yaml"
+              command="load"/>
+    <rosparam param="simulation/direct_joint_position_exclusions">
+      [yaw_dock_joint, pitch_dock_joint]
+    </rosparam>
+  </group>
+
+  <!-- One physics process owns both free bodies and both controller managers. -->
+  <node pkg="mujoco_ros_control" type="mujoco_ros_control"
+        name="mujoco_ros_control" required="true" output="screen">
+    <param name="headless" value="$(arg headless)"/>
+    <param name="mujoco_model_path" value="$(find ninja)/mujoco/two_ninja/robot.xml"/>
+    <rosparam param="robots">
+      - namespace: ninja1
+      - namespace: ninja2
+    </rosparam>
+    <rosparam param="adaptive_joint_damping">
+      - {joint: "ninja1/yaw_dock_joint", moving_damping: 10.0}
+      - {joint: "ninja1/pitch_dock_joint", moving_damping: 10.0}
+      - {joint: "ninja2/yaw_dock_joint", moving_damping: 10.0}
+      - {joint: "ninja2/pitch_dock_joint", moving_damping: 10.0}
+    </rosparam>
+    <rosparam param="docking">
+      enabled: true
+      equality: ninja1_ninja2_dock
+      leader_site: ninja1/yaw_connect_point
+      follower_site: ninja2/pitch_connect_point
+      follower_root_joint: ninja2/root
+      leader_frame_id: ninja1/yaw_connect_point
+      follower_frame_id: ninja2/pitch_connect_point
+      leader_wrench_topic: /ninja1/mujoco/contact_wrench
+      follower_wrench_topic: /ninja2/mujoco/contact_wrench
+      wrench_pub_period: 0.01
+    </rosparam>
+  </node>
+
+  <node name="controller_spawner" pkg="controller_manager" type="spawner"
+        ns="ninja1" required="true" output="screen"
+        args="--timeout 0 attitude_controller"/>
+  <node name="controller_spawner" pkg="controller_manager" type="spawner"
+        ns="ninja2" required="true" output="screen"
+        args="--timeout 0 attitude_controller"/>
+</launch>

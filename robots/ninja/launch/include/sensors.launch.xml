@@ -2,6 +2,7 @@
 <launch>
   <arg name="real_machine" default="false" />
   <arg name="simulation" default="false" />
+  <arg name="mujoco" default="false" />
   <arg name="robot_ns" default="gimbalrotor" />
   <arg name="robot_id" default="1" />
   <group ns="$(arg robot_ns)">
@@ -23,10 +24,12 @@
     </group>
 
     <!-- livox mid360 & fast lio -->
-    <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" />
-    <include file="$(find fast_lio)/launch/mapping_mid360.launch" >
-      <arg name="rviz" value="false" />
-    </include>
+    <group unless="$(arg mujoco)">
+      <include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" />
+      <include file="$(find fast_lio)/launch/mapping_mid360.launch" >
+        <arg name="rviz" value="false" />
+      </include>
+    </group>
 
     <!-- basic configuration for sensors (e.g. noise sigma) -->
     <rosparam file="$(find gimbalrotor)/config/sensors/imu/spinal.yaml" command="load" />

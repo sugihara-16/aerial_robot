@@ -48,4 +48,9 @@ namespace hardware_interface
     spinal_state_estimator_.getAttEstimator()->setGroundTruthStates(rot, ang_vel);
   }
 
+  void MujocoSpinalInterface::useGroundTruth(bool flag)
+  {
+    spinal_state_estimator_.getAttEstimator()->useGroundTruth(flag);
+  }
+
 }

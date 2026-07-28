@@ -1,0 +1,17 @@
+controller:
+  # Reject ambiguous one-shot commands with an empty Header.  Use
+  # ff_inter_wrench_cmd.py, which stamps commands before connecting so an
+  # older publisher cannot overwrite a newer target after a delayed handshake.
+  ff_inter_wrench_require_stamp: true
+  publish_desired_inter_wrench: true
+
+  # MuJoCo's rigid, direct gimbal actuation needs less proportional action
+  # and more angular-rate damping than the Gazebo servo model.
+  roll:
+    p_gain: 20.0
+    i_gain: 1.0
+    d_gain: 15.0
+  pitch:
+    p_gain: 20.0
+    i_gain: 1.0
+    d_gain: 15.0

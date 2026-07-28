@@ -21,6 +21,7 @@ namespace hardware_interface
     void setMagValue(double mag_x, double mag_y, double mag_z);
     void setGroundTruthStates(double q_x, double q_y, double q_z, double q_w,
                               double w_x, double w_y, double w_z);
+    void useGroundTruth(bool flag);
 
     void stateEstimate();
     inline void onGround(bool flag) { on_ground_ = flag; }

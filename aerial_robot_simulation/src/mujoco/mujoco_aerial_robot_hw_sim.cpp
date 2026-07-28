@@ -1,5 +1,7 @@
 #include <aerial_robot_simulation/mujoco/mujoco_aerial_robot_hw_sim.h>
 
+#include <cmath>
+
 namespace mujoco_ros_control
 {
 
@@ -17,7 +19,8 @@ namespace mujoco_ros_control
     float mass = 0.0;
     for(int i = 0; i < mujoco_model_->nbody; i++)
       {
-       mass += mujoco_model_->body_mass[i];
+        if(belongsToModel(mj_id2name(mujoco_model_, mjOBJ_BODY, i)))
+          mass += mujoco_model_->body_mass[i];
       }
     ROS_INFO_STREAM("[mujoco] robot mass is " << mass);
 
@@ -26,10 +29,11 @@ namespace mujoco_ros_control
     int motor_num = 0;
     for(int i = 0; i < mujoco_model_->nu; i++)
       {
-        std::string actuator_name = mj_id2name(mujoco_model_, mjtObj_::mjOBJ_ACTUATOR, i);
-        if(actuator_name.find("rotor") != std::string::npos)
+        const char* actuator_name = mj_id2name(mujoco_model_, mjOBJ_ACTUATOR, i);
+        if(belongsToModel(actuator_name) &&
+           rosName(actuator_name).find("rotor") != std::string::npos)
           {
-            rotor_list_.push_back(actuator_name);
+            rotor_list_.push_back(rosName(actuator_name));
             motor_num++;
           }
       }
@@ -75,7 +79,14 @@ namespace mujoco_ros_control
                     // use param of servo
                     init_value = static_cast<double>(servo_params.second["simulation"][init_value_param_name]);
                   }
-                control_input_.at((mj_name2id(mujoco_model_, mjtObj_::mjOBJ_ACTUATOR, servo_name.c_str()))) = init_value;
+                const std::string model_servo_name = modelName(servo_name);
+                const int actuator_id = mj_name2id(mujoco_model_, mjOBJ_ACTUATOR, model_servo_name.c_str());
+                if(actuator_id < 0)
+                  {
+                    ROS_ERROR_STREAM("can not find MuJoCo actuator " << model_servo_name);
+                    return false;
+                  }
+                control_input_.at(actuator_id) = init_value;
               }
           }
       }
@@ -108,7 +119,8 @@ namespace mujoco_ros_control
 
   void AerialRobotHWSim::read(const ros::Time& time, const ros::Duration& period)
   {
-    int fc_id = mj_name2id(mujoco_model_, mjtObj_::mjOBJ_SITE, "fc");
+    const std::string fc_name = modelName("fc");
+    int fc_id = mj_name2id(mujoco_model_, mjtObj_::mjOBJ_SITE, fc_name.c_str());
     mjtNum* site_xpos = mujoco_data_->site_xpos;
     mjtNum* site_xmat = mujoco_data_->site_xmat;
     tf::Matrix3x3 fc_rot_mat = tf::Matrix3x3(site_xmat[9 * fc_id + 0], site_xmat[9 * fc_id + 1], site_xmat[9 * fc_id + 2],
@@ -120,21 +132,24 @@ namespace mujoco_ros_control
     tf::Vector3 acc, gyro, mag;
     for(int i = 0; i < mujoco_model_->nsensor; i++)
       {
-        if(std::string(mj_id2name(mujoco_model_, mjtObj_::mjOBJ_SENSOR, i)) == "acc")
+        const char* sensor_name_ptr = mj_id2name(mujoco_model_, mjOBJ_SENSOR, i);
+        if(!sensor_name_ptr) continue;
+        const std::string sensor_name(sensor_name_ptr);
+        if(sensor_name == modelName("acc"))
           {
             for(int j = 0; j < mujoco_model_->sensor_dim[i]; j++)
               {
                 acc[j] = mujoco_data_->sensordata[mujoco_model_->sensor_adr[i] + j];
               }
           }
-        if(std::string(mj_id2name(mujoco_model_, mjtObj_::mjOBJ_SENSOR, i)) == "gyro")
+        if(sensor_name == modelName("gyro"))
           {
             for(int j = 0; j < mujoco_model_->sensor_dim[i]; j++)
               {
                 gyro[j] = mujoco_data_->sensordata[mujoco_model_->sensor_adr[i] + j];
               }
           }
-        if(std::string(mj_id2name(mujoco_model_, mjtObj_::mjOBJ_SENSOR, i)) == "mag")
+        if(sensor_name == modelName("mag"))
           {
             for(int j = 0; j < mujoco_model_->sensor_dim[i]; j++)
               {
@@ -158,6 +173,25 @@ namespace mujoco_ros_control
     odom_msg.pose.pose.orientation.y = fc_quat.y();
     odom_msg.pose.pose.orientation.z = fc_quat.z();
     odom_msg.pose.pose.orientation.w = fc_quat.w();
+
+    mjtNum fc_world_velocity[6];
+    mjtNum fc_local_velocity[6];
+    mj_objectVelocity(mujoco_model_, mujoco_data_, mjOBJ_SITE, fc_id, fc_world_velocity, 0);
+    mj_objectVelocity(mujoco_model_, mujoco_data_, mjOBJ_SITE, fc_id, fc_local_velocity, 1);
+    // Match Gazebo's odometry convention: world-frame linear velocity and
+    // FC-frame angular velocity.
+    odom_msg.twist.twist.angular.x = fc_local_velocity[0];
+    odom_msg.twist.twist.angular.y = fc_local_velocity[1];
+    odom_msg.twist.twist.angular.z = fc_local_velocity[2];
+    odom_msg.twist.twist.linear.x = fc_world_velocity[3];
+    odom_msg.twist.twist.linear.y = fc_world_velocity[4];
+    odom_msg.twist.twist.linear.z = fc_world_velocity[5];
+
+    if((time - last_ground_truth_time_).toSec() >= ground_truth_pub_rate_)
+      {
+        ground_truth_pub_.publish(odom_msg);
+        last_ground_truth_time_ = time;
+      }
 
     /* set ground truth for controller: use the value with noise */
     spinal_interface_.setGroundTruthStates(fc_quat.x(), fc_quat.y(), fc_quat.z(), fc_quat.w(),
@@ -191,11 +225,17 @@ namespace mujoco_ros_control
 
   void AerialRobotHWSim::write(const ros::Time& time, const ros::Duration& period)
   {
+    std::lock_guard<std::recursive_mutex> control_lock(control_input_mutex_);
     for(int i = 0; i < spinal_interface_.getMotorNum(); i++)
       {
-        int rotor_id = mj_name2id(mujoco_model_, mjOBJ_ACTUATOR, rotor_list_.at(i).c_str());
+        const std::string model_rotor_name = modelName(rotor_list_.at(i));
+        int rotor_id = mj_name2id(mujoco_model_, mjOBJ_ACTUATOR, model_rotor_name.c_str());
         double rotor_force = spinal_interface_.getForce(i);
-        control_input_.at(rotor_id) = rotor_force;
+        if(std::isfinite(rotor_force))
+          control_input_.at(rotor_id) = rotor_force;
+        else
+          ROS_ERROR_STREAM_THROTTLE(1.0, "Ignoring non-finite rotor force for "
+                                    << model_rotor_name);
       }
 
       DefaultRobotHWSim::write(time, period);

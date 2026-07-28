@@ -1,0 +1,59 @@
+package:
+  ["ninja"]
+
+ninja:
+  input: ["robots/ninja.urdf.xacro"]
+  filename: [""]
+  meshdir: "urdf/mesh"
+  # Match the proportional gains used by Ninja's Gazebo joint controllers.
+  joint_kp:
+    default: 40.0
+    gimbal1_roll: 5.0
+    gimbal1_pitch: 5.0
+    gimbal2_roll: 5.0
+    gimbal2_pitch: 5.0
+    gimbal3_roll: 5.0
+    gimbal3_pitch: 5.0
+  # Resting damping for the articulated docking links.  The two-module launch
+  # lowers this only while a joint is tracking a position change.
+  joint_damping:
+    yaw_dock_joint: 150.0
+    pitch_dock_joint: 150.0
+  # Preserve these geometry-less URDF frames for docking and wrench output.
+  sites:
+    - name: yaw_connect_point
+      rgba: "1 0 0 1"
+    - name: pitch_connect_point
+      rgba: "0 1 0 1"
+  collision:
+    visual_collision: false
+    geoms:
+      - name: main_body_collision
+        type: box
+        size: "0.15 0.15325 0.052"
+        pos: "-0.12 0 -0.052"
+        contype: 1
+        conaffinity: 1
+        rgba: "0 0 0 0"
+  multi_model:
+    name: two_ninja
+    source: mujoco/robot.xml
+    output: mujoco/two_ninja/robot.xml
+    instances:
+      - prefix: "ninja1/"
+        pos: "-0.3 0 0.2"
+      - prefix: "ninja2/"
+        pos: "0.8 0 0.2"
+    equalities:
+      - type: weld
+        name: ninja1_ninja2_dock
+        body1: "ninja1/yaw_dock_link"
+        body2: "ninja2/pitch_dock_link"
+        # body2 pose relative to body1 when both connection-site frames match.
+        relpose: "0.17785 -0.025 -0.03 1 0 0 0"
+        # The anchor is ninja2's pitch_connect_point in pitch_dock_link.
+        anchor: "-0.037 0.025 0"
+        active: false
+        solref: "0.1 1"
+        solimp: "0.95 0.99 0.001"
+        torquescale: 0.05

@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   beetle
+  mujoco_ros_control
   )
 
 find_package(Eigen3 REQUIRED)
@@ -31,7 +32,7 @@ generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ninja_robot_model ninja_controller ninja_navigation
-  CATKIN_DEPENDS aerial_robot_control aerial_robot_model aerial_robot_msgs pluginlib roscpp gimbalrotor diagnostic_msgs std_msgs geometry_msgs message_runtime beetle
+  CATKIN_DEPENDS aerial_robot_control aerial_robot_model aerial_robot_msgs pluginlib roscpp gimbalrotor diagnostic_msgs std_msgs geometry_msgs message_runtime beetle mujoco_ros_control
   )
 
 configure_file(script/roslaunch ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/roslaunch COPYONLY)
@@ -70,6 +71,13 @@ install(DIRECTORY script
   USE_SOURCE_PERMISSIONS
 )
 
-catkin_install_python(PROGRAMS script/roslaunch
+catkin_install_python(PROGRAMS
+  script/roslaunch
+  script/ff_inter_wrench_cmd.py
+  script/mujoco_dock_two_ninja.py
   DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
   )
+
+mujoco_model_convert(
+  ${PROJECT_SOURCE_DIR}
+  ${PROJECT_SOURCE_DIR}/config/mujoco_model.yaml)

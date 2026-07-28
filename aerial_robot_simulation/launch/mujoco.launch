@@ -15,6 +15,7 @@
   <rosparam file="$(find aerial_robot_simulation)/config/Mujoco.yaml" command="load" ns="$(arg robot_ns)" />
 
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
-        output="screen" ns="$(arg robot_ns)" args="attitude_controller" />
+        required="true" output="screen" ns="$(arg robot_ns)"
+        args="--timeout 0 attitude_controller" />
 
 </launch>

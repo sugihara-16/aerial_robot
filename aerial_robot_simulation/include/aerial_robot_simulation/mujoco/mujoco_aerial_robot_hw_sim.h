@@ -38,6 +38,7 @@ namespace mujoco_ros_control
     double ground_truth_rot_drift_frequency_, ground_truth_vel_drift_frequency_, ground_truth_angular_drift_frequency_;
     double joint_state_pub_rate_ = 0.02;
 
+    ros::Time last_ground_truth_time_;
     ros::Time last_mocap_time_;
   };
 }

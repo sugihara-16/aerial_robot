@@ -123,7 +123,7 @@
     <!-- yaw -->
     <link name="yaw_dock_link">
       <inertial>
-        <origin xyz="0.06461625 -0.02429533 0.00000000" rpy="0 0 0"/>
+        <origin xyz="0.06461625 0.00000000 -0.02429533 " rpy="0 0 0"/>
         <mass value="0.45686952"/>
         <inertia
             ixx = "0.00058684" ixy = "-0.00000696" ixz = "-0.00002605"

@@ -64,3 +64,9 @@ navigation:
 
   #manipulation
   end_efct_mode: true
+  # Valve mode assumes mod1/pitch=-pi/2, so pitch_connect_point/x is
+  # approximately parallel to world z. The target stays this bounded angle
+  # ahead of the measured phase; it cannot run away when the valve stalls.
+  end_efct_max_phase_lead: 0.08
+  end_efct_min_axis_z_alignment: 0.0
+  end_efct_position_error_limit: 0.1

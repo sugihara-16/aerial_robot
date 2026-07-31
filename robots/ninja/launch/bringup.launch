@@ -21,6 +21,7 @@
   <arg name="mujoco" default="False" />
   <arg name="launch_mujoco" default="True" />
   <arg name="mujoco_model_prefix" default="" />
+  <arg name="joy_udp" default="True" />
 
   ###########  Parameters  ###########
   <group ns="$(arg robot_ns)">
@@ -57,6 +58,7 @@
    ###########  Navigation  ###########
    <param name="flight_navigation_plugin_name" value="aerial_robot_navigation/ninja_navigation" />
    <rosparam file="$(arg config_dir)/NavigationConfig.yaml" command="load" />
+   <param name="navigation/joy_udp" value="$(arg joy_udp)" />
 
   </group>
 

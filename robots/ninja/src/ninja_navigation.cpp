@@ -16,6 +16,12 @@ NinjaNavigator::NinjaNavigator():
   asm_vel_based_waypoint_(false),
   yaw_teleop_flag_(false),
   pure_vel_control_flag_(false),
+  end_efct_pivot_valid_(false),
+  end_efct_yaw_input_(0.0),
+  end_efct_max_phase_lead_(0.0),
+  end_efct_min_axis_z_alignment_(0.95),
+  end_efct_position_error_limit_(0.1),
+  end_efct_pivot_world_(KDL::Vector::Zero()),
   lpf_init_flag_(true)
 {
 }
@@ -28,6 +34,8 @@ void NinjaNavigator::initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
   BeetleNavigator::initialize(nh, nhp, robot_model, estimator, loop_du);
   ninja_robot_model_ = boost::dynamic_pointer_cast<NinjaRobotModel>(robot_model);
   target_com_pose_pub_ = nh_.advertise<geometry_msgs::Pose>("debug/target_com_pose", 1); //for debug
+  end_efct_pivot_error_pub_ =
+    nh_.advertise<geometry_msgs::Vector3Stamped>("debug/end_effector_pivot_error", 1);
   joint_control_pub_ = nh_.advertise<sensor_msgs::JointState>("joints_ctrl", 1);
   dock_joints_pos_pub_ = nh_.advertise<sensor_msgs::JointState>("dock_joints_pos", 1);
   target_com_rot_sub_ = nh_.subscribe("/target_com_rot", 1, &NinjaNavigator::setGoalCoMRotCallback, this);
@@ -57,6 +65,9 @@ void NinjaNavigator::update()
   calcCenterOfMoving();
   calcModulesFkTransform();
 
+  if(pure_vel_control_flag_ && !updateEndEffectorRotationReference())
+    stopEndEffectorRotationControl();
+
   if(ros::Time::now().toSec() - prev_morphing_stamp_ > morphing_process_interval_)
     {
       comRotationProcess();
@@ -72,7 +83,7 @@ void NinjaNavigator::update()
 
   calcComStateProcess();
 
-  if(getCurrentAssembled())
+  if(getCurrentAssembled() && !pure_vel_control_flag_)
     {
       setTargetZeroVel();
       setTargetZeroOmega();
@@ -639,7 +650,9 @@ void NinjaNavigator::convertTargetPosFromCoG2CoM()
       {
         setTargetVel(target_vel);
         setTargetOmega(target_omega);
-        xy_control_mode_ = VEL_CONTROL_MODE;
+        // Valve rotation uses bounded pose feedback around the latched
+        // end-effector pivot, so retain position control in the base layer.
+        xy_control_mode_ = POS_CONTROL_MODE;
       }
     else
       {
@@ -659,6 +672,11 @@ void NinjaNavigator::convertTargetPosFromCoG2CoM()
 void NinjaNavigator::comRotationProcess()
 {
   if(!control_flag_) return;
+  // Valve rotation synchronizes its pose reference to the measured
+  // end-effector phase. Integrating commanded yaw here would let the
+  // reference run away while a loaded valve is stalled.
+  if(pure_vel_control_flag_) return;
+
   double target_roll, target_pitch, target_yaw;
   double goal_roll, goal_pitch, goal_yaw;
   target_com_rot_.GetEulerZYX(target_yaw, target_pitch, target_roll);
@@ -700,6 +718,12 @@ void NinjaNavigator::comMovingProcess()
 {
   if(!getCurrentAssembled() || !control_flag_) return;
   if(getNaviState() != HOVER_STATE) return;
+
+  // updateEndEffectorRotationReference() constructs the CoM pose that keeps
+  // the measured end-effector origin at the latched world point. Do not
+  // integrate that reference again from the joystick velocity.
+  if(pure_vel_control_flag_) return;
+
   /* get current com position*/
   tf::Vector3 current_com_pos;
   try
@@ -780,6 +804,147 @@ void NinjaNavigator::comMovingProcess()
       double new_target_com_z = getTargetPosCand().z() + getTargetVelCand().z()*loop_du_;
       setTargetPosCandZ(new_target_com_z);
     }  
+}
+
+bool NinjaNavigator::updateEndEffectorRotationReference()
+{
+  if(!getCurrentAssembled() || !control_flag_ ||
+     (getNaviState() != HOVER_STATE && getNaviState() != TAKEOFF_STATE) ||
+     assembled_modules_ids_.empty())
+    return false;
+
+  if(ros::Time::now().toSec() > asm_teleop_reset_time_)
+    {
+      ROS_WARN_THROTTLE(1.0, "End-effector rotation command timed out");
+      return false;
+    }
+
+  const std::string left_efct_coord =
+    my_name_ + std::to_string(assembled_modules_ids_.front()) +
+    std::string("/pitch_connect_point");
+  const std::string com_coord =
+    my_name_ + std::to_string(my_id_) + std::string("/center_of_moving");
+
+  try
+    {
+      geometry_msgs::TransformStamped tfst =
+        tfBuffer_.lookupTransform(com_coord, left_efct_coord, ros::Time(0));
+      KDL::Frame com_from_efct;
+      tf::transformMsgToKDL(tfst.transform, com_from_efct);
+
+      tfst = tfBuffer_.lookupTransform("world", left_efct_coord, ros::Time(0));
+      KDL::Frame world_from_efct;
+      tf::transformMsgToKDL(tfst.transform, world_from_efct);
+
+      const KDL::Vector axis_world =
+        world_from_efct.M * KDL::Vector(1.0, 0.0, 0.0);
+      if(std::abs(axis_world.z()) < end_efct_min_axis_z_alignment_)
+        {
+          ROS_ERROR_THROTTLE(
+            1.0,
+            "End-effector x axis is not aligned with world z "
+            "(alignment: %.3f, required: %.3f). Set mod1/pitch near -pi/2.",
+            std::abs(axis_world.z()), end_efct_min_axis_z_alignment_);
+          return false;
+        }
+
+      const KDL::Frame efct_from_com = com_from_efct.Inverse();
+      const KDL::Frame actual_com = world_from_efct * efct_from_com;
+
+      if(!end_efct_pivot_valid_)
+        {
+          end_efct_pivot_world_ = world_from_efct.p;
+          end_efct_pivot_valid_ = true;
+          ROS_INFO_STREAM(
+            "Latched end-effector pivot at ["
+            << end_efct_pivot_world_.x() << ", "
+            << end_efct_pivot_world_.y() << ", "
+            << end_efct_pivot_world_.z() << "]");
+        }
+
+      // Keep the reference a bounded phase lead ahead of the measured pose.
+      // If the valve stalls, the reference therefore stops with it instead of
+      // integrating an ever-growing position/yaw error.
+      const double phase_lead =
+        end_efct_yaw_input_ * end_efct_max_phase_lead_;
+      const KDL::Frame desired_efct(
+        world_from_efct.M * KDL::Rotation::RotX(phase_lead),
+        end_efct_pivot_world_);
+      KDL::Frame desired_com = desired_efct * efct_from_com;
+
+      // Limit the complete correction (pivot error plus tangential phase
+      // lead), so a bad measurement cannot create an unbounded position step.
+      KDL::Vector position_correction = desired_com.p - actual_com.p;
+      const double correction_norm = position_correction.Norm();
+      if(end_efct_position_error_limit_ > 0.0 &&
+         correction_norm > end_efct_position_error_limit_)
+        {
+          position_correction =
+            position_correction *
+            (end_efct_position_error_limit_ / correction_norm);
+          desired_com.p = actual_com.p + position_correction;
+        }
+
+      tf::Vector3 target_pos;
+      tf::vectorKDLToTF(desired_com.p, target_pos);
+      setTargetPosCand(target_pos);
+      setFinalTargetPosCand(target_pos);
+      // Position/yaw feedback realizes the bounded phase lead. Avoid a
+      // separately transformed velocity feed-forward: each module's CoM-to-
+      // CoG conversion can otherwise produce inconsistent twists.
+      setTargetVelCand(tf::Vector3(0.0, 0.0, 0.0));
+      setTargetOmegaCand(tf::Vector3(0.0, 0.0, 0.0));
+      asm_xy_control_mode_ = POS_CONTROL_MODE;
+
+      double target_roll, target_pitch, unused_target_yaw;
+      target_com_rot_.GetEulerZYX(
+        unused_target_yaw, target_pitch, target_roll);
+      double desired_roll, desired_pitch, desired_yaw;
+      desired_com.M.GetEulerZYX(
+        desired_yaw, desired_pitch, desired_roll);
+      const double target_yaw = angles::normalize_angle(desired_yaw);
+      const KDL::Rotation target_rotation =
+        KDL::Rotation::RPY(target_roll, target_pitch, target_yaw);
+      setTargetComRot(target_rotation);
+      setGoalComRot(target_rotation);
+
+      geometry_msgs::Vector3Stamped pivot_error_msg;
+      pivot_error_msg.header.stamp = ros::Time::now();
+      pivot_error_msg.header.frame_id = "world";
+      pivot_error_msg.vector.x =
+        end_efct_pivot_world_.x() - world_from_efct.p.x();
+      pivot_error_msg.vector.y =
+        end_efct_pivot_world_.y() - world_from_efct.p.y();
+      pivot_error_msg.vector.z =
+        end_efct_pivot_world_.z() - world_from_efct.p.z();
+      end_efct_pivot_error_pub_.publish(pivot_error_msg);
+    }
+  catch(tf2::TransformException& ex)
+    {
+      ROS_ERROR_THROTTLE(
+        1.0, "Failed to update end-effector rotation reference: %s",
+        ex.what());
+      return false;
+    }
+
+  return true;
+}
+
+void NinjaNavigator::stopEndEffectorRotationControl()
+{
+  const bool was_active = pure_vel_control_flag_;
+  pure_vel_control_flag_ = false;
+  end_efct_pivot_valid_ = false;
+  end_efct_yaw_input_ = 0.0;
+  setTargetVelCand(tf::Vector3(0.0, 0.0, 0.0));
+  setTargetOmegaCand(tf::Vector3(0.0, 0.0, 0.0));
+  asm_xy_control_mode_ = POS_CONTROL_MODE;
+
+  if(was_active && getCurrentAssembled())
+    {
+      setTargetCoMPoseFromCurrState();
+      ROS_INFO("Stopped end-effector rotation control");
+    }
 }
 
 void NinjaNavigator::setTargetCoMPoseFromCurrState()
@@ -1320,69 +1485,27 @@ void NinjaNavigator::joyStickControl(const sensor_msgs::JoyConstPtr & joy_msg)
     {
       if(end_efct_flag)
         {
-          std::string left_efct_coord = my_name_ + std::to_string(assembled_modules_ids_[0]) + std::string("/pitch_connect_point");
-          std::string com_coord = my_name_ + std::to_string(my_id_) + std::string("/center_of_moving");
-          try
-            {
-              pure_vel_control_init_z_ = curr_com_pose_.p.z();
-              auto tfst = tfBuffer_.lookupTransform(
-                                                    com_coord, left_efct_coord, ros::Time(0));
-              KDL::Frame left2com;
-              tf::transformMsgToKDL(tfst.transform, left2com);
-
-              double w = raw_yaw_cmd * max_teleop_yaw_vel_;
-              KDL::Vector omega_local(w, 0.0, 0.0);
-
-              KDL::Twist twist_left;
-              twist_left.vel = KDL::Vector::Zero();
-              twist_left.rot = omega_local;
-
-              KDL::Twist twist_com = left2com * twist_left;
-
-              KDL::Vector v_world = curr_com_pose_.M * twist_com.vel;
-              tf::Vector3 target_vel_w;
-              tf::vectorKDLToTF(v_world, target_vel_w);
-              asm_teleop_reset_time_ =
-                asm_teleop_reset_duration_ + ros::Time::now().toSec();
-              setTargetOmegaCandZ(twist_com.rot.z());
-              switch (asm_xy_control_mode_)
-                {
-                case POS_CONTROL_MODE:
-                  {
-                    /* vel command */
-                    setTargetVelCandX(target_vel_w.x());
-                    setTargetVelCandY(target_vel_w.y());
-                    asm_xy_control_mode_ = VEL_CONTROL_MODE;
-                    break;
-                  }
-                case VEL_CONTROL_MODE:
-                  {
-                    /* vel command */
-                    setTargetVelCandX(target_vel_w.x());
-                    setTargetVelCandY(target_vel_w.y());
-                    break;
-                  }
-                default:
-                  {
-                    break;
-                  }
-                }
-              pure_vel_control_flag_ = true;
-              // ROS_ERROR_STREAM("vel = [" << target_vel_w.x()<<", " << target_vel_w.y()<<", "  << target_vel_w.z() << "]");
-              // ROS_ERROR_STREAM("rot = [" << twist_com.rot.x()<<", " << twist_com.rot.y()<<", "  << twist_com.rot.z() << "]");
-            }
-          catch (tf2::TransformException& ex)
-            {
-              ROS_ERROR_STREAM("Conversion between " << left_efct_coord << " and " << com_coord <<" is not found");
-              return;
-            }
+          end_efct_yaw_input_ = raw_yaw_cmd;
+          asm_teleop_reset_time_ =
+            asm_teleop_reset_duration_ + ros::Time::now().toSec();
+          pure_vel_control_flag_ = true;
+          yaw_teleop_flag_ = true;
         }
       else if(!end_efct_mode_)
         {
+          if(pure_vel_control_flag_)
+            stopEndEffectorRotationControl();
           asm_teleop_reset_time_ = asm_teleop_reset_duration_ + ros::Time::now().toSec();
           setTargetOmegaCandZ(raw_yaw_cmd * max_teleop_yaw_vel_);
+          yaw_teleop_flag_ = true;
         }
-      yaw_teleop_flag_ = true;
+      else if(pure_vel_control_flag_)
+        {
+          // Releasing R1 must stop valve mode even while the right stick
+          // remains deflected.
+          stopEndEffectorRotationControl();
+          yaw_teleop_flag_ = false;
+        }
     }
   else
     {
@@ -1391,14 +1514,7 @@ void NinjaNavigator::joyStickControl(const sensor_msgs::JoyConstPtr & joy_msg)
           setTargetOmegaCandZ(0);
           yaw_teleop_flag_ = false;
           if(pure_vel_control_flag_)
-            {
-              pure_vel_control_flag_ = false;
-              asm_xy_control_mode_ = POS_CONTROL_MODE;
-              setTargetVelCandX(0);
-              setTargetVelCandY(0);
-              setTargetCoMPoseFromCurrState();
-              setTargetPosCandZ(pure_vel_control_init_z_);
-            }
+            stopEndEffectorRotationControl();
         }
     }
 
@@ -1713,6 +1829,14 @@ void NinjaNavigator::rosParamInit()
   getParam<double>(nh, "pseudo_radius_change_rate_", pseudo_radius_change_rate_, 0.005);
 
   getParam<bool>(nh, "end_efct_mode", end_efct_mode_, false);
+  getParam<double>(
+    nh, "end_efct_max_phase_lead", end_efct_max_phase_lead_, 0.0);
+  getParam<double>(
+    nh, "end_efct_min_axis_z_alignment",
+    end_efct_min_axis_z_alignment_, 0.95);
+  getParam<double>(
+    nh, "end_efct_position_error_limit",
+    end_efct_position_error_limit_, 0.1);
 
   BeetleNavigator::rosParamInit();
 }

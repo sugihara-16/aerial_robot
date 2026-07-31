@@ -5,6 +5,7 @@
 #include <beetle/beetle_navigation.h>
 #include <ninja/model/ninja_robot_model.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Vector3Stamped.h>
 #include <regex>
 #include <aerial_robot_control/control/utils/pid.h>
 #include <std_msgs/Bool.h>
@@ -273,10 +274,13 @@ namespace aerial_robot_navigation
     void jointsCtrlCallback(const sensor_msgs::JointStateConstPtr& state);
     void comRotationProcess();
     void comMovingProcess();
+    bool updateEndEffectorRotationReference();
+    void stopEndEffectorRotationControl();
     KDL::Frame calcCom2BaseTransform(int module_id);
     void calcModulesFkTransform();
 
     ros::Publisher target_com_pose_pub_;
+    ros::Publisher end_efct_pivot_error_pub_;
     boost::shared_ptr<NinjaRobotModel> ninja_robot_model_;
     ros::Subscriber target_com_rot_sub_;
     ros::Subscriber target_joints_pos_sub_;
@@ -346,10 +350,15 @@ namespace aerial_robot_navigation
     double pseudo_radius_change_rate_;
 
     bool yaw_teleop_flag_;
-    double pure_vel_control_init_z_;
 
     bool pure_vel_control_flag_;
     bool end_efct_mode_;
+    bool end_efct_pivot_valid_;
+    double end_efct_yaw_input_;
+    double end_efct_max_phase_lead_;
+    double end_efct_min_axis_z_alignment_;
+    double end_efct_position_error_limit_;
+    KDL::Vector end_efct_pivot_world_;
 
     IirFilter lpf_vel_;
     IirFilter lpf_omega_;

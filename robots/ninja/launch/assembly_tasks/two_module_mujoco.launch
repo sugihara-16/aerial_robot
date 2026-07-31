@@ -12,6 +12,9 @@
     <arg name="mujoco_model_prefix" value="ninja1/"/>
     <arg name="launch_gazebo" value="false"/>
     <arg name="headless" value="$(arg headless)"/>
+    <!-- Test publishers such as rospy use TCPROS. Real-machine bringup keeps
+         the existing UDPROS default. -->
+    <arg name="joy_udp" value="false"/>
   </include>
 
   <include file="$(find ninja)/launch/bringup.launch">
@@ -24,6 +27,7 @@
     <arg name="launch_gazebo" value="false"/>
     <!-- Avoid launching a second RViz when visualization is requested. -->
     <arg name="headless" value="true"/>
+    <arg name="joy_udp" value="false"/>
   </include>
 
   <param name="/use_sim_time" value="true"/>

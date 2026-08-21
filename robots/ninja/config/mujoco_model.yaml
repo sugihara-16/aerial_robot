@@ -2,8 +2,9 @@ package:
   ["ninja"]
 
 ninja:
-  input: ["robots/ninja.urdf.xacro"]
-  filename: [""]
+  input: ["robots/ninja.urdf.xacro", "robots/ninja.urdf.xacro"]
+  filename: ["", "wrench_sensor"]
+  xacro_args: ["wrench_sensor:=false", "wrench_sensor:=true"]
   meshdir: "urdf/mesh"
   # Match the proportional gains used by Ninja's Gazebo joint controllers.
   joint_kp:
@@ -36,24 +37,45 @@ ninja:
         conaffinity: 1
         rgba: "0 0 0 0"
   multi_model:
-    name: two_ninja
-    source: mujoco/robot.xml
-    output: mujoco/two_ninja/robot.xml
-    instances:
-      - prefix: "ninja1/"
-        pos: "-0.3 0 0.2"
-      - prefix: "ninja2/"
-        pos: "0.8 0 0.2"
-    equalities:
-      - type: weld
-        name: ninja1_ninja2_dock
-        body1: "ninja1/yaw_dock_link"
-        body2: "ninja2/pitch_dock_link"
-        # body2 pose relative to body1 when both connection-site frames match.
-        relpose: "0.17785 -0.025 -0.03 1 0 0 0"
-        # The anchor is ninja2's pitch_connect_point in pitch_dock_link.
-        anchor: "-0.037 0.025 0"
-        active: false
-        solref: "0.1 1"
-        solimp: "0.95 0.99 0.001"
-        torquescale: 0.05
+    - name: two_ninja
+      source: mujoco/robot.xml
+      output: mujoco/two_ninja/robot.xml
+      instances:
+        - prefix: "ninja1/"
+          pos: "-0.3 0 0.2"
+        - prefix: "ninja2/"
+          pos: "0.8 0 0.2"
+      equalities:
+        - type: weld
+          name: ninja1_ninja2_dock
+          body1: "ninja1/yaw_dock_link"
+          body2: "ninja2/pitch_dock_link"
+          # body2 pose relative to body1 when both normal connection-site
+          # frames match.
+          relpose: "0.17785 -0.025 -0.03 1 0 0 0"
+          anchor: "-0.037 0.025 0"
+          active: false
+          solref: "0.1 1"
+          solimp: "0.95 0.99 0.001"
+          torquescale: 0.05
+    - name: two_ninja_wrench_sensor
+      source: mujoco/wrench_sensor/robot.xml
+      output: mujoco/two_ninja_wrench_sensor/robot.xml
+      instances:
+        - prefix: "ninja1/"
+          pos: "-0.3 0 0.2"
+        - prefix: "ninja2/"
+          pos: "0.8 0 0.2"
+      equalities:
+        - type: weld
+          name: ninja1_ninja2_dock
+          body1: "ninja1/yaw_dock_link"
+          body2: "ninja2/pitch_dock_link"
+          # Restored CFS-model connection points:
+          # yaw=(0.0965, 0, -0.025), pitch=(-0.0645, 0.025, 0).
+          relpose: "0.161 -0.025 -0.025 1 0 0 0"
+          anchor: "-0.0645 0.025 0"
+          active: false
+          solref: "0.1 1"
+          solimp: "0.95 0.99 0.001"
+          torquescale: 0.05

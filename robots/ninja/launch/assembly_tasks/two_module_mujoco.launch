@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
   <arg name="headless" default="true"/>
+  <arg name="wrench_sensor" default="false"/>
+  <!-- Test-only additive force error in the world z direction.  It is zero
+       unless explicitly enabled, so normal simulation and real flight are
+       unaffected. -->
+  <arg name="wrench_estimation_test_fz_bias" default="0.0"/>
 
   <!-- Each Ninja keeps its own controller, estimator and ROS namespace. -->
   <include file="$(find ninja)/launch/bringup.launch">
@@ -15,6 +20,7 @@
     <!-- Test publishers such as rospy use TCPROS. Real-machine bringup keeps
          the existing UDPROS default. -->
     <arg name="joy_udp" value="false"/>
+    <arg name="wrench_sensor" value="$(arg wrench_sensor)"/>
   </include>
 
   <include file="$(find ninja)/launch/bringup.launch">
@@ -28,6 +34,7 @@
     <!-- Avoid launching a second RViz when visualization is requested. -->
     <arg name="headless" value="true"/>
     <arg name="joy_udp" value="false"/>
+    <arg name="wrench_sensor" value="$(arg wrench_sensor)"/>
   </include>
 
   <param name="/use_sim_time" value="true"/>
@@ -42,6 +49,8 @@
     <rosparam param="simulation/direct_joint_position_exclusions">
       [yaw_dock_joint, pitch_dock_joint]
     </rosparam>
+    <param name="controller/wrench_estimation_test_force_z_world"
+           value="$(arg wrench_estimation_test_fz_bias)"/>
   </group>
   <group ns="ninja2">
     <rosparam file="$(find aerial_robot_simulation)/config/Mujoco.yaml"
@@ -49,13 +58,22 @@
     <rosparam param="simulation/direct_joint_position_exclusions">
       [yaw_dock_joint, pitch_dock_joint]
     </rosparam>
+    <param name="controller/wrench_estimation_test_force_z_world"
+           value="$(arg wrench_estimation_test_fz_bias)"/>
   </group>
+
+  <arg name="two_module_mujoco_model"
+       value="$(find ninja)/mujoco/two_ninja/robot.xml"
+       unless="$(arg wrench_sensor)"/>
+  <arg name="two_module_mujoco_model"
+       value="$(find ninja)/mujoco/two_ninja_wrench_sensor/robot.xml"
+       if="$(arg wrench_sensor)"/>
 
   <!-- One physics process owns both free bodies and both controller managers. -->
   <node pkg="mujoco_ros_control" type="mujoco_ros_control"
         name="mujoco_ros_control" required="true" output="screen">
     <param name="headless" value="$(arg headless)"/>
-    <param name="mujoco_model_path" value="$(find ninja)/mujoco/two_ninja/robot.xml"/>
+    <param name="mujoco_model_path" value="$(arg two_module_mujoco_model)"/>
     <rosparam param="robots">
       - namespace: ninja1
       - namespace: ninja2

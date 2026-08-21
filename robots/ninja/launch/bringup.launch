@@ -22,6 +22,7 @@
   <arg name="launch_mujoco" default="True" />
   <arg name="mujoco_model_prefix" default="" />
   <arg name="joy_udp" default="True" />
+  <arg name="wrench_sensor" default="False" />
 
   ###########  Parameters  ###########
   <group ns="$(arg robot_ns)">
@@ -79,6 +80,7 @@
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="rviz_config" value="$(arg config_dir)/rviz_config" />
     <arg name="rviz_init_pose" value="$(arg config_dir)/RvizInit.yaml" />
+    <arg name="model_options" value="wrench_sensor:=$(arg wrench_sensor)" />
     <arg name="need_joint_state" value="false" if ="$(eval arg('simulation') or arg('real_machine'))"/>
   </include >
 
@@ -113,10 +115,14 @@
   </include>
 
   ########## Simulation in MuJoCo #########
+  <arg name="mujoco_model" value="$(find ninja)/mujoco/robot.xml"
+       unless="$(arg wrench_sensor)"/>
+  <arg name="mujoco_model" value="$(find ninja)/mujoco/wrench_sensor/robot.xml"
+       if="$(arg wrench_sensor)"/>
   <include file="$(find aerial_robot_simulation)/launch/mujoco.launch" if="$(eval arg('simulation') and not arg('real_machine') and arg('mujoco') and arg('launch_mujoco'))" >
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="headless" value="$(arg headless)"/>
-    <arg name="mujoco_model" value="$(find ninja)/mujoco/robot.xml"/>
+    <arg name="mujoco_model" value="$(arg mujoco_model)"/>
   </include>
 
 </launch>

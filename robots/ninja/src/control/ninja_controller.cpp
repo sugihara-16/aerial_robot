@@ -1,12 +1,15 @@
 #include <ninja/control/ninja_controller.h>
 
+#include <cmath>
+
 using namespace std;
 
 namespace aerial_robot_control
 {
   NinjaController::NinjaController():
     BeetleController(),
-    joint_control_timestamp_(-1)
+    joint_control_timestamp_(-1),
+    wrench_estimation_test_force_world_(Eigen::Vector3d::Zero())
   {}
   void NinjaController::initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
                                     boost::shared_ptr<aerial_robot_model::RobotModel> robot_model,
@@ -218,8 +221,12 @@ namespace aerial_robot_control
 
     est_external_wrench_ = momentum_observer_matrix_ * (sum_momentum - init_sum_momentum_ - integrate_term_);
 
-    Eigen::VectorXd est_external_wrench_cog = est_external_wrench_;
-    est_external_wrench_cog.head(3) = cog_rot.inverse() * est_external_wrench_.head(3);
+    Eigen::VectorXd est_external_wrench_with_test_bias = est_external_wrench_;
+    est_external_wrench_with_test_bias.head(3) += wrench_estimation_test_force_world_;
+
+    Eigen::VectorXd est_external_wrench_cog = est_external_wrench_with_test_bias;
+    est_external_wrench_cog.head(3) =
+      cog_rot.inverse() * est_external_wrench_with_test_bias.head(3);
     // ROS_ERROR_STREAM(cog_rot);
 
     std::string my_name = ninja_navigator_->getMyName() + std::to_string(ninja_navigator_->getMyID());
@@ -278,7 +285,10 @@ namespace aerial_robot_control
         return;
       }
 
-    /* Common disturbance is represented as a per-module wrench in the common COM frame. */
+    /* Keep the legacy whole-wrench output: the per-module mean at the common
+     * base origin.  Contact decomposition below uses a distributed common
+     * force model so a common force does not acquire a different artificial
+     * moment merely because each module has a different COG origin. */
     Wrench common_disturbance = Wrench::Zero();
     int valid_module_count = 0;
     for(const int id: ids)
@@ -291,6 +301,52 @@ namespace aerial_robot_control
       }
     if(valid_module_count == 0) return;
     common_disturbance /= static_cast<double>(valid_module_count);
+
+    /*
+     * Split the common force before translating wrench origins.  The force
+     * part of a wrench is origin independent, so its mean is well-defined in
+     * the common base orientation.  Model that force as acting at every
+     * module COG, transform each copy to the common base, and only then find
+     * the remaining common pure torque.
+     *
+     * For a true internal contact, action/reaction forces sum to zero and this
+     * step changes nothing.  For a shared observer/gravity bias, it removes
+     * the bias at the COG and therefore prevents p x F from appearing as a
+     * false contact torque.
+     */
+    const Eigen::Vector3d common_force_base = common_disturbance.head<3>();
+    std::map<int, Wrench> common_force_at_cog_in_base;
+    Wrench remaining_common_disturbance = Wrench::Zero();
+    for(const int id: ids)
+      {
+        const auto flag = assembly_flags.find(id);
+        const auto estimated = estimated_wrenches.find(id);
+        if(flag == assembly_flags.end() || !flag->second ||
+           estimated == estimated_wrenches.end()) continue;
+
+        const ModuleTransforms& xs = transforms.at(id);
+        Wrench common_force_cog = Wrench::Zero();
+        common_force_cog.head<3>() =
+          xs.Ci_from_Base.topLeftCorner<3, 3>() * common_force_base;
+
+        const Wrench common_force_base_at_cog =
+          xs.Ci_from_Base.fullPivLu().solve(common_force_cog);
+        if(!common_force_base_at_cog.allFinite())
+          {
+            ROS_ERROR_THROTTLE(1.0,
+                               "Failed to place common force at module COG");
+            for(const int module_id: ids)
+              wrench_comp_list_[module_id] = Wrench::Zero();
+            return;
+          }
+        common_force_at_cog_in_base[id] = common_force_base_at_cog;
+        remaining_common_disturbance +=
+          estimated->second - common_force_base_at_cog;
+      }
+    remaining_common_disturbance /= static_cast<double>(valid_module_count);
+    // The force was already removed above.  Suppress round-off before the
+    // remaining common pure torque is subtracted from every module.
+    remaining_common_disturbance.head<3>().setZero();
 
     geometry_msgs::WrenchStamped whole_wrench_msg;
     whole_wrench_msg.header.stamp.fromSec(estimator_->getImuLatestTimeStamp());
@@ -320,8 +376,13 @@ namespace aerial_robot_control
         const auto estimated = estimated_wrenches.find(id);
         Wrench estimated_base = Wrench::Zero();
         if(estimated != estimated_wrenches.end()) estimated_base = estimated->second;
-        module_residual.segment<6>(6 * i) =
-          xs.Ci_from_Base * (estimated_base - common_disturbance);
+        Wrench distributed_common_force = Wrench::Zero();
+        const auto distributed = common_force_at_cog_in_base.find(id);
+        if(distributed != common_force_at_cog_in_base.end())
+          distributed_common_force = distributed->second;
+        module_residual.segment<6>(6 * i) = xs.Ci_from_Base *
+          (estimated_base - distributed_common_force -
+           remaining_common_disturbance);
 
         if(i > 0)
           contact_matrix.block<6, 6>(6 * i, 6 * (i - 1)) = xs.Ci_from_Dim1;
@@ -441,6 +502,15 @@ namespace aerial_robot_control
     getParam<double>(joint_nh, "p_gain", joint_p_gain_, 0.1);
     getParam<double>(joint_nh, "i_gain", joint_i_gain_, 0.005);
     getParam<double>(joint_nh, "d_gain", joint_d_gain_, 0.07);  
+
+    double test_force_z_world = 0.0;
+    getParam<double>(control_nh, "wrench_estimation_test_force_z_world",
+                     test_force_z_world, 0.0);
+    wrench_estimation_test_force_world_ =
+      Eigen::Vector3d(0.0, 0.0, test_force_z_world);
+    if(std::abs(test_force_z_world) > 1e-9)
+      ROS_WARN_STREAM("Injecting test-only external-wrench observer bias in "
+                      "world z: " << test_force_z_world << " N");
   }
 
   void NinjaController::reset()

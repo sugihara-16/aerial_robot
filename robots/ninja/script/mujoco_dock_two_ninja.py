@@ -125,13 +125,10 @@ def main():
                 args.settle_time)
             rospy.sleep(args.settle_time)
             rospy.loginfo("Docking settle period complete")
-            # Calling the idempotent service again verifies that the weld is
-            # still active and that both connector sites stayed coincident.
-            # If a constraint transient displaced them, the backend repairs
-            # the alignment before returning success.
-            success = call_service(
-                "/mujoco/docking/align_and_attach",
-                "Verify attachment after settling")
+            # Do not invoke align_and_attach again here.  A compliant weld can
+            # retain a small constraint displacement under gravity; treating
+            # that as a new alignment request teleports the follower while
+            # estimators are running and can create a large state transient.
     return 0 if success else 1
 
 

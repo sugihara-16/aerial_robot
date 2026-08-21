@@ -8,6 +8,7 @@
   <arg name="spawn_yaw_2" default="0.0"/>
   <arg name="headless" default="true"/>
   <arg name="simulation" default="true"/>
+  <arg name="wrench_sensor" default="false"/>
   <group>
     <include file="$(find ninja)/launch/bringup.launch">
       <arg name="robot_id" value="1"/>
@@ -19,6 +20,7 @@
       <arg name="spawn_x" default="$(arg spawn_x_1)"/>
       <arg name="spawn_y" default="$(arg spawn_y_1)"/>
       <arg name="spawn_yaw" default="$(arg spawn_yaw_1)"/>
+      <arg name="wrench_sensor" value="$(arg wrench_sensor)"/>
     </include>
 
     <include file="$(find ninja)/launch/bringup.launch">
@@ -31,6 +33,7 @@
       <arg name="spawn_x" default="$(arg spawn_x_2)"/>
       <arg name="spawn_y" default="$(arg spawn_y_2)"/>
       <arg name="spawn_yaw" default="$(arg spawn_yaw_2)"/>
+      <arg name="wrench_sensor" value="$(arg wrench_sensor)"/>
     </include>
   </group>
 

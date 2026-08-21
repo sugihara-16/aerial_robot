@@ -2,6 +2,11 @@
 <robot
     xmlns:xacro="http://www.ros.org/wiki/xacro" name="ninja" >
 
+  <!-- Keep the normal-flight model as the default.  The wrench-sensor model
+       restores the dock geometry and inertial parameters used by the CFS
+       experiment before commit 434793c5. -->
+  <xacro:arg name="wrench_sensor" default="false" />
+
   <xacro:include filename="$(find ninja)/urdf/ninja.urdf.xacro" />
   <xacro:include filename="$(find ninja)/urdf/common.xacro" />
 
@@ -9,8 +14,8 @@
   <xacro:ninja_gimbal_link self="1" rotor_direction="1"/>
   <xacro:ninja_gimbal_link self="2" rotor_direction="-1"/>
   <xacro:ninja_gimbal_link self="3" rotor_direction="1"/>
-  <xacro:ninja_docking_mech_yaw/>
-  <xacro:ninja_docking_mech_pitch/>
+  <xacro:ninja_docking_mech_yaw wrench_sensor="$(arg wrench_sensor)"/>
+  <xacro:ninja_docking_mech_pitch wrench_sensor="$(arg wrench_sensor)"/>
   <!-- <xacro:battery_3000mAh/> -->
   <xacro:battery_1300mAh/>
   <xacro:livox/>

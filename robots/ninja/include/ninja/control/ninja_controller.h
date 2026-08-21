@@ -41,6 +41,10 @@ namespace aerial_robot_control
 
     double joint_control_timestamp_;
 
+    // Test-only additive observer force in the world frame.  Production and
+    // ordinary simulation use the zero default.
+    Eigen::Vector3d wrench_estimation_test_force_world_;
+
     KDL::Tree module_tree_for_control_;
 
     ros::Subscriber pseudo_assembly_flag_sub_;

@@ -125,7 +125,7 @@
       <inertial>
         <xacro:if value="${wrench_sensor}">
           <origin xyz="0.06461625 0.00000000 -0.02429533" rpy="0 0 0"/>
-          <mass value="0.45686952"/>
+          <mass value="0.38640665"/>
           <inertia
               ixx = "0.00058684" ixy = "-0.00000696" ixz = "-0.00002605"
               iyx = "-0.00000696" iyy = "0.00234155" iyz = "0.00000963"
@@ -362,7 +362,7 @@
       <inertial>
         <xacro:if value="${wrench_sensor}">
           <origin xyz="-0.03575946 0.02293296 0.0000" rpy="0 0 0"/>
-          <mass value="0.16575426"/>
+          <mass value="0.09529127"/>
           <inertia
               ixx = "0.00023487" ixy = "-0.00014777" ixz = "0.00000012"
               iyx = "-0.00014777" iyy = "0.00033710" iyz = "0.00000000"
